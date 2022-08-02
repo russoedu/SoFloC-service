@@ -1,28 +1,28 @@
 module.exports = {
   roots: [
-    '<rootDir>/src'
+    '<rootDir>/src',
   ],
   testMatch: [
     '**/__tests__/**/*.+(ts|tsx|js)',
-    '**/?(*.)+(spec|test).+(ts|tsx|js)'
+    '**/?(*.)+(spec|test).+(ts|tsx|js)',
   ],
   testPathIgnorePatterns: ['<rootDir>/node_modules/'],
   transform:              {
-    '^.+\\.(ts|tsx)$': 'ts-jest'
+    '^.+\\.(ts|tsx)$': 'ts-jest',
   },
   setupFiles: [
-    '<rootDir>/src/.jest/console.js',
+    '<rootDir>/src/_jest/console.js',
   ],
   coverageDirectory:   'coverage',
   collectCoverage:     true,
   collectCoverageFrom: [
-    'src/**/*.ts'
+    'src/**/*.ts',
   ],
   coverageReporters: [
     'text',
     'cobertura',
     'html',
-    'lcov'
+    'lcov',
   ],
   reporters: [
     'default',
@@ -31,8 +31,8 @@ module.exports = {
       {
         outputDirectory:     'coverage',
         outputName:          'test-results.xml',
-        usePathForSuiteName: 'true'
-      }
+        usePathForSuiteName: 'true',
+      },
     ],
   ],
 }

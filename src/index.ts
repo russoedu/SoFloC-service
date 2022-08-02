@@ -14,4 +14,7 @@ import { zip } from './_models/zip'
  */
 
 const path = 'SecurityReports_2_1_0_2.zip'
-zip.load(path)
+await zip.load(path)
+
+console.log(`Please select what Flow you want to clone:
+${zip.workflows.join('\n')}`)

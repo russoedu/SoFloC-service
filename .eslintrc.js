@@ -50,6 +50,7 @@ module.exports = {
         align: 'value',
       },
     ],
+    'no-dupe-class-members':                             'off',
     'no-unused-vars':                                    'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any':                'off',

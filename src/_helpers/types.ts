@@ -1,116 +1,169 @@
-export type CustomizationsT = {
-  ImportExportXml: {
-    Entities: string
-    Roles: string
-    Workflows: {
-      Workflow: {
-        JsonFileName: string
-        Type: number
-        Subprocess: number
-        Category: number
-        Mode: number
-        Scope: number
-        OnDemand: number
-        TriggerOnCreate: number
-        TriggerOnDelete: number
-        AsyncAutodelete: number
-        SyncWorkflowLogOnFailure: number
-        StateCode: number
-        StatusCode: number
-        RunAs: number
-        IsTransacted: number
-        IntroducedVersion: number | string
-        IsCustomizable: number
-        BusinessProcessType?: number
-        IsCustomProcessingStepAllowedForOtherPublishers: number
-        PrimaryEntity: string
-        LocalizedNames: {
-          LocalizedName: string
-        }
-        UIFlowType?: number
-      }[]
-    }
-    FieldSecurityProfiles: string
-    Templates: string
-    EntityMaps: string
-    EntityRelationships: string
-    OrganizationSettings: string
-    optionsets: string
-    CustomControls: string
-    EntityDataProviders: string
-    connectionreferences: {
-      connectionreference: {
-        connectionreferencedisplayname: string
-        connectorid: string
-        iscustomizable: number
-        statecode: number
-        statuscode: number
-        description?: string
-      }[]
-    }
-    Languages: {
-      Language: number
-    }
-  }
+interface UniqueName {
+  '$t': string;
+}
+
+interface EMailAddress {
+  'xsi:nil': boolean;
+}
+interface Managed {
+  '$t': number;
+}
+
+interface LocalizedName {
+  description: string;
+  languagecode: number;
 }
 
 interface LocalizedNames {
-  LocalizedName: string
+  LocalizedName: LocalizedName;
+}
+interface Type {
+  '$t': number;
 }
 
-export type SolutionT = {
+interface JsonFileName {
+  '$t': string;
+}
+
+export interface SolutionT {
   ImportExportXml: {
+    version: string;
+    SolutionPackageVersion: number;
+    languagecode: number;
+    generatedBy: string;
+    'xmlns:xsi': string;
     SolutionManifest: {
-      UniqueName: string
-      LocalizedNames: LocalizedNames
+      UniqueName: UniqueName;
+      LocalizedNames: LocalizedNames;
       Descriptions: {
-        Description: string
-      }
-      Version: string
-      Managed: number
+        Description: LocalizedName;
+      };
+      Version: UniqueName;
+      Managed: Managed;
       Publisher: {
-        UniqueName: string
-        LocalizedNames: LocalizedNames
-        Descriptions: string
-        EMailAddress: string
-        SupportingWebsiteUrl: string
-        CustomizationPrefix: string
-        CustomizationOptionValuePrefix: number
+        UniqueName: UniqueName;
+        LocalizedNames: LocalizedNames;
+        Descriptions: any;
+        EMailAddress: EMailAddress;
+        SupportingWebsiteUrl: EMailAddress;
+        CustomizationPrefix: UniqueName;
+        CustomizationOptionValuePrefix: Managed;
         Addresses: {
           Address: {
-            AddressNumber: number
-            AddressTypeCode: string
-            City: string
-            County: string
-            Country: string
-            Fax: string
-            FreightTermsCode: string
-            ImportSequenceNumber: string
-            Latitude: string
-            Line1: string
-            Line2: string
-            Line3: string
-            Longitude: string
-            Name: string
-            PostalCode: string
-            PostOfficeBox: string
-            PrimaryContactName: string
-            ShippingMethodCode: string
-            StateOrProvince: string
-            Telephone1: string
-            Telephone2: string
-            Telephone3: string
-            TimeZoneRuleVersionNumber: string
-            UPSZone: string
-            UTCOffset: string
-            UTCConversionTimeZoneCode: string
-          }[]
-        }
-      }
+            AddressNumber: Managed;
+            AddressTypeCode: EMailAddress;
+            City: EMailAddress;
+            County: EMailAddress;
+            Country: EMailAddress;
+            Fax: EMailAddress;
+            FreightTermsCode: EMailAddress;
+            ImportSequenceNumber: EMailAddress;
+            Latitude: EMailAddress;
+            Line1: EMailAddress;
+            Line2: EMailAddress;
+            Line3: EMailAddress;
+            Longitude: EMailAddress;
+            Name: EMailAddress;
+            PostalCode: EMailAddress;
+            PostOfficeBox: EMailAddress;
+            PrimaryContactName: EMailAddress;
+            ShippingMethodCode: EMailAddress;
+            StateOrProvince: EMailAddress;
+            Telephone1: EMailAddress;
+            Telephone2: EMailAddress;
+            Telephone3: EMailAddress;
+            TimeZoneRuleVersionNumber: EMailAddress;
+            UPSZone: EMailAddress;
+            UTCOffset: EMailAddress;
+            UTCConversionTimeZoneCode: EMailAddress;
+          }[];
+        };
+      };
       RootComponents: {
-        RootComponent: string[]
-      }
-      MissingDependencies: string
-    }
-  }
+        RootComponent: {
+          type: number;
+          id: string;
+          behavior: number;
+        }[];
+      };
+      MissingDependencies: any;
+    };
+  };
+}
+
+export interface CustomisationsT {
+  ImportExportXml: {
+    'xmlns:xsi': string;
+    Entities: any;
+    Roles: any;
+    Workflows: {
+      Workflow: {
+        WorkflowId: string;
+        Name: string;
+        JsonFileName: JsonFileName;
+        Type: Type;
+        Subprocess: Type;
+        Category: Type;
+        Mode: Type;
+        Scope: Type;
+        OnDemand: Type;
+        TriggerOnCreate: Type;
+        TriggerOnDelete: Type;
+        AsyncAutodelete: Type;
+        SyncWorkflowLogOnFailure: Type;
+        StateCode: Type;
+        StatusCode: Type;
+        RunAs: Type;
+        IsTransacted: Type;
+        IntroducedVersion: {
+          '$t': number | string;
+        };
+        IsCustomizable: Type;
+        BusinessProcessType?: Type;
+        IsCustomProcessingStepAllowedForOtherPublishers: Type;
+        PrimaryEntity: JsonFileName;
+        LocalizedNames: LocalizedNames;
+        UIFlowType?: Type;
+      }[];
+    };
+    FieldSecurityProfiles: any;
+    Templates: any;
+    EntityMaps: any;
+    EntityRelationships: any;
+    OrganizationSettings: any;
+    optionsets: any;
+    CustomControls: any;
+    EntityDataProviders: any;
+    connectionreferences: {
+      connectionreference: {
+        connectionreferencelogicalname: string;
+        connectionreferencedisplayname: JsonFileName;
+        connectorid: JsonFileName;
+        iscustomizable: Type;
+        statecode: Type;
+        statuscode: Type;
+        description?: JsonFileName;
+      }[];
+    };
+    Languages: {
+      Language: Type;
+    };
+  };
+}
+
+type XmlT = {
+  xml: string
+  node: Document
+}
+export type XmlCustomisationsT = XmlT & {
+  data: CustomisationsT
+}
+export type XmlSolutionT = XmlT & {
+  data: SolutionT
+}
+
+export type Workflow = {
+  name: string,
+  id: string,
+  fileIndex: number
 }
