@@ -1,3 +1,4 @@
+
 interface UniqueName {
   '$t': string;
 }
@@ -151,16 +152,7 @@ export interface CustomisationsT {
   };
 }
 
-type XmlT = {
-  xml: string
-  node: Document
-}
-export type XmlCustomisationsT = XmlT & {
-  data: CustomisationsT
-}
-export type XmlSolutionT = XmlT & {
-  data: SolutionT
-}
+export type Xml = string
 
 export type Workflow = {
   name: string,

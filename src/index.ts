@@ -1,3 +1,4 @@
+import { join } from 'path'
 import { zip } from './_models/zip'
 /*
  * Load zip
@@ -13,8 +14,13 @@ import { zip } from './_models/zip'
  * Save new Zip
  */
 
-const path = 'SecurityReports_2_1_0_2.zip'
+const path = join('files', 'SecurityReports_2_1_0_2.zip')
 await zip.load(path)
 
 console.log(`Please select what Flow you want to clone:
 ${zip.workflows.join('\n')}`)
+
+zip.copyWorkflow('new flow', 'f4910f26-8210-ec11-b6e6-002248842287')
+
+console.log('done');
+
