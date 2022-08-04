@@ -160,10 +160,13 @@ export type Workflow = {
   fileIndex: number
 }
 
-export type CopyDataT = {
+export type CopyT = {
   originGui: string,
+  upperOriginGui: string,
   guid: string,
   upperGuid: string,
   name: string,
   fileName: string,
+  newVersion: string,
+  newSnakeVersion: string,
 }

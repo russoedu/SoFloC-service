@@ -16,11 +16,12 @@ import { zip } from './_models/zip'
 
 const path = join('files', 'SecurityReports_2_1_0_2.zip')
 await zip.load(path)
+console.log(`Current Solution version is :
+${zip.currentVersion}`)
 
 console.log(`Please select what Flow you want to clone:
-${zip.workflows.join('\n')}`)
+${zip.workflows.map(wf => wf.name).join('\n')}`)
 
-zip.copyWorkflow('new flow', '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2')
+await zip.copyWorkflow('Security Reports Execution', '2.1.0.3', 'f4910f26-8210-ec11-b6e6-002248842287')
 
-console.log('done');
-
+console.log('done')
