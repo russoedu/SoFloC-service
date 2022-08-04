@@ -159,3 +159,11 @@ export type Workflow = {
   id: string,
   fileIndex: number
 }
+
+export type CopyDataT = {
+  originGui: string,
+  guid: string,
+  upperGuid: string,
+  name: string,
+  fileName: string,
+}

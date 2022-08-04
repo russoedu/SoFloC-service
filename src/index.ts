@@ -20,7 +20,7 @@ await zip.load(path)
 console.log(`Please select what Flow you want to clone:
 ${zip.workflows.join('\n')}`)
 
-zip.copyWorkflow('new flow', 'f4910f26-8210-ec11-b6e6-002248842287')
+zip.copyWorkflow('new flow', '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2')
 
 console.log('done');
 

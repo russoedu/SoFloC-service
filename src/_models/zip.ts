@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { readFileSync, writeFileSync } from 'fs'
 import JSZip, { JSZipObject } from 'jszip'
-import parser from 'xml2json'
-import { CustomisationsT, Workflow, Xml } from '../_helpers/types'
-import libxmljs from 'libxmljs'
-import { v4 as uuidv4 } from 'uuid'
 import { join } from 'path'
-import { JSDOM } from 'jsdom'
+import { v4 as uuidv4 } from 'uuid'
+import parser from 'xml2json'
+import { CopyDataT, CustomisationsT, Workflow, Xml } from '../_helpers/types'
 
 class Zip {
   /**
@@ -26,6 +24,8 @@ class Zip {
    */
   workflowFiles: JSZipObject[]
 
+  copyData: CopyDataT
+
   /**
    * All files inside the Zip
    */
@@ -42,30 +42,55 @@ class Zip {
     this.workflows = this.#getWorkflows()
   }
 
-  copyWorkflow (newName: string, workflowId: string) {
-    if (this.workflows.findIndex(wf => wf.id === workflowId) < 0) return false
+  copyWorkflow (newName: string, originGui: string) {
+    if (this.workflows.findIndex(wf => wf.id === originGui) < 0) return false
 
-    const guid = uuidv4()
-    const solutionComponent = `<RootComponent type="29" id="{${workflowId}}" behavior="0" />`
-    const solutionWfRegEx = new RegExp(`\r?\n?.+?${solutionComponent}`, 'gm')
+    this.#setCopyData(newName, originGui)
 
-    // Copy on solution
-    const part = this.solution.match(solutionWfRegEx)?.[0]
-    if (!part) return false
-    const solutionCopy = part.replace(workflowId, guid)
-    this.solution = this.solution.replace(part, `${part}${solutionCopy}`)
+    this.#copyOnSolution()
+    this.#copyCustomisations()
 
     writeFileSync(join('files', 'solution2' + '.xml'), this.solution)
-
-
-    // this.solution.xml.replace(part, part + )
-
-    // Copy on customisations
+    writeFileSync(join('files', 'customisations2' + '.xml'), this.customisations)
 
     // Copy File
 
-    console.log('xxx');
+    console.log('xxx')
+  }
 
+  #copyCustomisations () {
+    const customisationsComponent = `<Workflow WorkflowId="{${this.copyData.originGui}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
+    const customisationsWfRegEx = new RegExp(`\r?\n?.+?${customisationsComponent}`, 'gm')
+
+    const part = this.customisations.match(customisationsWfRegEx)?.[0]
+
+    if (!part) return false
+
+    const JsonFileNameRegEx = /<JsonFileName>(.|\r|\n)+?<\/JsonFileName>/gi
+
+    const copy = part
+      .replace(this.copyData.originGui, this.copyData.guid)
+      .replace(/Name=".+?"/, `Name="${this.copyData.name}"`)
+      .replace(JsonFileNameRegEx, `<JsonFileName>/Workflows/${this.copyData.fileName}-${this.copyData.upperGuid}.json</JsonFileName>`)
+
+    this.customisations = this.customisations.replace(part, `${part}${copy}`)
+
+    // TODO replace name
+
+    // TODO replace <JsonFileName>/Workflows/ManualExecution-0F48CBA9-EF0C-ED11-82E4-000D3A64F6F2.json</JsonFileName>
+  }
+
+  #copyOnSolution () {
+    const solutionComponent = `<RootComponent type="29" id="{${this.copyData.originGui}}" behavior="0" />`
+    const solutionWfRegEx = new RegExp(`\r?\n?.+?${solutionComponent}`, 'gm')
+
+    const part = this.solution.match(solutionWfRegEx)?.[0]
+
+    if (!part) return false
+
+    const copy = part.replace(this.copyData.originGui, this.copyData.guid)
+
+    this.solution = this.solution.replace(part, `${part}${copy}`)
   }
 
   async #getZipFiles (path: string) {
@@ -96,6 +121,7 @@ class Zip {
       object:     true,
     }
     const data = parser.toJson(this.customisations, parsingOptions) as unknown as CustomisationsT
+
     return data.ImportExportXml.Workflows.Workflow
       .map(wf => {
         const id = wf.WorkflowId.replace(/{|}/g, '')
@@ -105,6 +131,17 @@ class Zip {
           fileIndex: this.workflowFiles.findIndex(wf => wf.name.includes(id)),
         }
       })
+  }
+
+  #setCopyData (newName:string, originGui: string) {
+    const guid = uuidv4()
+    this.copyData = {
+      originGui,
+      guid,
+      upperGuid: guid.toUpperCase(),
+      name:      newName,
+      fileName:  newName.replace(/\s/g, ''),
+    }
   }
 }
 
