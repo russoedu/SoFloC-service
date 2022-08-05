@@ -2,10 +2,9 @@
   "name": "power-automate-flow-copy-service",
   "version": "11.1.0",
   "description": "Service to copy the flow inside a solution package",
-  "type": "module",
   "scripts": {
-    "start": "node --es-module-specifier-resolution=node .",
-    "buildAndStart": "tsc && node --es-module-specifier-resolution=node .",
+    "start": "node .",
+    "buildAndStart": "tsc && node .",
     "build": "tsc",
     "prepare": "npm run build",
     "prepublishOnly": "npm test",
