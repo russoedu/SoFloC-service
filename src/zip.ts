@@ -1,15 +1,19 @@
 import JSZip, { JSZipObject } from 'jszip'
 import { v4 as uuidv4 } from 'uuid'
-import parser from 'xml2json'
-import { CustomisationsXml, FlowCopyT, NewSolutionT, OriginT, SolutionXml, Workflow, Xml, ZipInterface } from './types'
+import parser from 'xml-js'
+import { CustomisationsXml } from './customisations'
+import { SolutionXml } from './solution'
+import { FlowCopyT, NewSolutionT, OriginT, Workflow, Xml, ZipInterface } from './types'
 
-const parsingOptions: ({ object: true } & parser.JsonOptions) = {
-  reversible: true,
-  coerce:     true,
-  sanitize:   false,
-  trim:       true,
-  object:     true,
-}
+/*
+ * const parsingOptions: ({ object: true } & parser) = {
+ *   reversible: true,
+ *   coerce:     true,
+ *   sanitize:   false,
+ *   trim:       true,
+ *   object:     true,
+ * }
+ */
 
 class Zip implements ZipInterface {
   workflows: Workflow[]
@@ -62,6 +66,7 @@ class Zip implements ZipInterface {
     this.solution = this.solution
       .replace(part, `${part}${copy}`)
       .replace(`<Version>${this.currentVersion}</Version>`, `<Version>${this.solutionCopy.version}</Version>`)
+
     return true
   }
 
@@ -100,6 +105,9 @@ class Zip implements ZipInterface {
 
     const zipContent = await JSZip.loadAsync(this.origin.file)
     zipContent.file(fileToCopy.name, await fileToCopy.async('string'))
+    zipContent.file('solution.xml', this.solution)
+    zipContent.file('customizations.xml', this.customisations)
+
     const zipFile = await zipContent.generateAsync({
       type:               'base64',
       compression:        'DEFLATE',
@@ -134,22 +142,22 @@ class Zip implements ZipInterface {
   }
 
   #setCurrentVersion () {
-    const data = parser.toJson(this.solution, parsingOptions) as unknown as SolutionXml
+    const data = parser.xml2js(this.solution, { compact: true }) as unknown as SolutionXml
 
-    this.origin.version = data.ImportExportXml.SolutionManifest.Version.$t
+    this.origin.version = data.ImportExportXml.SolutionManifest.Version._text
     this.origin.snakeVersion = this.origin.version.replace(/\./g, '_')
   }
 
   #setWorkflows () {
-    const data = parser.toJson(this.customisations, parsingOptions) as unknown as CustomisationsXml
+    const data = parser.xml2js(this.customisations, { compact: true }) as unknown as CustomisationsXml
 
     this.workflows = data.ImportExportXml.Workflows.Workflow
       .map(wf => {
-        const id = wf.WorkflowId.replace(/{|}/g, '')
+        const id = wf._attributes.WorkflowId.replace(/{|}/g, '')
         return {
-          name:      wf.Name,
+          name:      wf._attributes.Name,
           id,
-          fileIndex: this.workflowFiles.findIndex(wf => wf.name.includes(id)),
+          fileIndex: this.workflowFiles.findIndex(wf => wf.name.includes(id.toUpperCase())),
         }
       })
   }
