@@ -6,14 +6,13 @@ export type Xml = string
 export type Workflow = {
   name: string,
   id: string,
-  fileIndex: number
+  file: JSZipObject,
 }
 export type OriginT = {
   guid: string,
   upperGuid: string,
   file: Buffer,
   zip: JSZip,
-  files: { [key: string]: JSZip.JSZipObject }
   name: string,
   version: string,
   snakeVersion: string,
@@ -46,10 +45,7 @@ export interface ZipInterface {
    * The current version of the solution
    */
    currentVersion: string
-  /**
-   * List of workflow files
-   */
-   workflowFiles: JSZipObject[]
+
   /**
    * The object with the data related to the origin file
    */

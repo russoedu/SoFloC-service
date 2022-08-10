@@ -1,38 +1,30 @@
-import JSZip, { JSZipObject } from 'jszip'
+import JSZip from 'jszip'
 import { v4 as uuidv4 } from 'uuid'
 import parser from 'xml-js'
 import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
 import { FlowCopyT, NewSolutionT, OriginT, Workflow, Xml, ZipInterface } from './types'
 
-/*
- * const parsingOptions: ({ object: true } & parser) = {
- *   reversible: true,
- *   coerce:     true,
- *   sanitize:   false,
- *   trim:       true,
- *   object:     true,
- * }
- */
-
 class Zip implements ZipInterface {
   workflows: Workflow[]
   customisations: Xml
   solution: Xml
   currentVersion: string
-  workflowFiles: JSZipObject[]
   origin: OriginT
   copy: FlowCopyT
   solutionCopy: NewSolutionT
 
+  /**
+   * Loads a ***Solution*** zip file
+   * @param file The ***Solution*** zip Buffer
+   * @param name The file name
+   */
   async load (file: Buffer, name: string) {
     await this.#setOrigin(file, name)
     await this.#setCustomisations()
     await this.#setSolution()
 
     this.#setCurrentVersion()
-    this.#setWorkflowFiles()
-
     this.#setWorkflows()
   }
 
@@ -46,6 +38,70 @@ class Zip implements ZipInterface {
     this.#updateCustomisations()
 
     return await this.#copyFile()
+  }
+
+  /**
+   * Sets the origin object with information about the ***Solution***.
+   *
+   * The guid and upperGuid on the origin object will only be filled after a flow is selected to be copied.
+   *
+   * The version and snakeVersion on the origin object will only be filled after the solution XML is loaded and parsed.
+   * @param file The ***Solution*** zip Buffer
+   * @param name The file name
+   */
+  async #setOrigin (file: Buffer, name: string) {
+    this.origin = {
+      guid:         '',
+      upperGuid:    '',
+      file,
+      name,
+      zip:          await JSZip.loadAsync(file),
+      version:      '',
+      snakeVersion: '',
+    }
+  }
+
+  /**
+   * Sets the customisations XML with the string from the ***Solution*** zip
+   */
+  async #setCustomisations () {
+    this.customisations = await this.#getFileFromZip('customizations.xml')
+  }
+
+  /**
+   * Sets the solution XML with the string from the ***Solution*** zip
+   */
+  async #setSolution () {
+    this.solution = await this.#getFileFromZip('solution.xml')
+  }
+
+  /**
+   * Sets the ***Solution*** current version in the origin object
+   */
+  #setCurrentVersion () {
+    const data = parser.xml2js(this.solution, { compact: true }) as unknown as SolutionXml
+
+    this.origin.version = data.ImportExportXml.SolutionManifest.Version._text
+    this.origin.snakeVersion = this.origin.version.replace(/\./g, '_')
+  }
+
+  /**
+   * Sets the workflow object with the list of workflows found in the ***Solution*** zip
+   */
+  #setWorkflows () {
+    const data = parser.xml2js(this.customisations, { compact: true }) as unknown as CustomisationsXml
+
+    const workflowFiles = Object.entries(this.origin.zip.files).filter(([name]) => name.match(/Workflows\/.+\.json/)).map(file => file[1])
+
+    this.workflows = data.ImportExportXml.Workflows.Workflow
+      .map(wf => {
+        const id = wf._attributes.WorkflowId.replace(/{|}/g, '')
+        return {
+          name: wf._attributes.Name,
+          id,
+          file: workflowFiles.find(wf => wf.name.includes(id.toUpperCase())) as JSZip.JSZipObject,
+        }
+      })
   }
 
   /**
@@ -95,16 +151,15 @@ class Zip implements ZipInterface {
   }
 
   async #copyFile (): Promise<false | {zipFile: string, name: string }> {
-    // const currentSnakeVersion = this.currentVersion.replace(/\./g, '_')
-    const fileToCopy = this.workflowFiles.find(file => file.name.match(this.origin.upperGuid))
+    const fileToCopy = this.workflows.find(wf => wf.file.name.match(this.origin.upperGuid))
 
     if (!fileToCopy) return false
 
-    fileToCopy.name = this.copy.fileName
-    fileToCopy.unsafeOriginalName = fileToCopy.name
+    fileToCopy.file.name = this.copy.fileName
+    fileToCopy.file.unsafeOriginalName = fileToCopy.name
 
     const zipContent = await JSZip.loadAsync(this.origin.file)
-    zipContent.file(fileToCopy.name, await fileToCopy.async('string'))
+    zipContent.file(fileToCopy.file.name, await fileToCopy.file.async('string'))
     zipContent.file('solution.xml', this.solution)
     zipContent.file('customizations.xml', this.customisations)
 
@@ -119,60 +174,6 @@ class Zip implements ZipInterface {
     return {
       zipFile,
       name: this.solutionCopy.name,
-    }
-  }
-
-  async #setCustomisations () {
-    this.customisations = await this.#getXml('customizations')
-  }
-
-  async #setSolution () {
-    this.solution = await this.#getXml('solution')
-  }
-
-  async #getXml (name: string): Promise<Xml> {
-    const file = this.origin.files[`${name}.xml`]
-    const xml = await file.async('string')
-
-    return xml
-  }
-
-  #setWorkflowFiles () {
-    this.workflowFiles = Object.entries(this.origin.files).filter(([name]) => name.match(/Workflows\/.+\.json/)).map(file => file[1])
-  }
-
-  #setCurrentVersion () {
-    const data = parser.xml2js(this.solution, { compact: true }) as unknown as SolutionXml
-
-    this.origin.version = data.ImportExportXml.SolutionManifest.Version._text
-    this.origin.snakeVersion = this.origin.version.replace(/\./g, '_')
-  }
-
-  #setWorkflows () {
-    const data = parser.xml2js(this.customisations, { compact: true }) as unknown as CustomisationsXml
-
-    this.workflows = data.ImportExportXml.Workflows.Workflow
-      .map(wf => {
-        const id = wf._attributes.WorkflowId.replace(/{|}/g, '')
-        return {
-          name:      wf._attributes.Name,
-          id,
-          fileIndex: this.workflowFiles.findIndex(wf => wf.name.includes(id.toUpperCase())),
-        }
-      })
-  }
-
-  async #setOrigin (file: Buffer, name: string) {
-    const zip = await JSZip.loadAsync(file)
-    this.origin = {
-      guid:         '',
-      upperGuid:    '',
-      file,
-      name,
-      zip,
-      files:        zip.files,
-      version:      '',
-      snakeVersion: '',
     }
   }
 
@@ -197,6 +198,18 @@ class Zip implements ZipInterface {
       version: newVersion,
       name:    this.origin.name.replace(this.origin.snakeVersion, newVersion.replace(/\./g, '_')),
     }
+  }
+
+  /**
+   * Retrieves a file from the ***Solution*** zip.
+   * @param name The name of the file to be retrieved
+   * @returns The string content of the file
+   */
+  async #getFileFromZip (name: string): Promise<string> {
+    const file = this.origin.zip.files[name]
+    const xml = await file.async('string')
+
+    return xml
   }
 }
 
