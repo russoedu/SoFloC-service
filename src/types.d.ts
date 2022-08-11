@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 
 import JSZip, { JSZipObject } from 'jszip'
 
@@ -8,14 +9,32 @@ export type Workflow = {
   id: string,
   file: JSZipObject,
 }
+interface InputByType {
+  base64: string;
+  string: string;
+  text: string;
+  binarystring: string;
+  array: number[];
+  uint8array: Uint8Array;
+  arraybuffer: ArrayBuffer;
+  blob: Blob;
+  stream: NodeJS.ReadableStream;
+}
+
+export type FileInput = InputByType[keyof InputByType] | Promise<InputByType[keyof InputByType]>
+
 export type OriginT = {
   guid: string,
   upperGuid: string,
-  file: Buffer,
+  file: FileInput,
   zip: JSZip,
   name: string,
   version: string,
   snakeVersion: string,
+  workflows: Workflow[],
+  customisations: Xml
+  solution: Xml
+  currentVersion: string
 }
 export type FlowCopyT = {
   guid: string,
@@ -30,29 +49,12 @@ export type NewSolutionT = {
 }
 export interface ZipInterface {
   /**
-   * List with the name of the workflows
-   */
-   workflows: Workflow[]
-  /**
-   * The customisations XML
-   */
-   customisations: Xml
-  /**
-   * The solution XML
-   */
-   solution: Xml
-  /**
-   * The current version of the solution
-   */
-   currentVersion: string
-
-  /**
    * The object with the data related to the origin file
    */
-   origin: OriginT
+   #origin: OriginT
   /**
    * The object with the data related to the copy
    */
-   copy: FlowCopyT
-   solutionCopy: NewSolutionT
+   #copy: FlowCopyT
+   #solutionCopy: NewSolutionT
 }
