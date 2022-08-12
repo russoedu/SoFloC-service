@@ -6,6 +6,7 @@ import { SolutionXml } from './solution'
 import { FileInput, FlowCopyT, NewSolutionT, OriginT, Xml, ZipInterface } from './types'
 
 class Zip implements ZipInterface {
+  #loaded = false
   #origin: OriginT
   #copy: FlowCopyT
   #solutionCopy: NewSolutionT
@@ -36,19 +37,29 @@ class Zip implements ZipInterface {
         customisations,
         solution,
       }
-
-      return {
-        version,
-        workflows: workflows.map(workflow => ({ name: workflow.name, id: workflow.id })),
-      }
+      this.#loaded = true
     } catch (error) {
-      // console.log(error)
+      console.error(error)
       throw new Error(`Failed to unzip '${name}'`)
     }
   }
 
+  get version () {
+    if (!this.#loaded) throw new Error('You need to load a zip to access this property')
+    return this.#origin.version
+  }
+
+  get workflows () {
+    if (!this.#loaded) throw new Error('You need to load a zip to access this property')
+    return this.#origin.workflows.map(workflow => ({
+      name: workflow.name,
+      id:   workflow.id,
+    }))
+  }
+
   async getZipWithCopy (newFlowName: string, newVersion: string, originGui: string) {
-    if (this.#origin.workflows.findIndex(wf => wf.id === originGui) < 0) return false
+    if (!this.#loaded) throw new Error('You need to load a zip to access this property')
+    if (this.#origin.workflows.findIndex(wf => wf.id === originGui) < 0) throw new Error(`'${originGui}' was not found on this Solution`)
 
     this.#updateOrigin(originGui)
     this.#setCopyData(newFlowName, newVersion)
