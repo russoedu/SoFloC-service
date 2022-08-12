@@ -19,21 +19,20 @@ class Zip implements ZipInterface {
   async load (file: FileInput, name: string) {
     try {
       const zip = await this.#getZipContent(file, name)
-      const customisations = await this.#getCustomisations(JSZip)
-      const solution = await this.#getSolution(JSZip)
+      const customisations = await this.#getCustomisations(zip)
+      const solution = await this.#getSolution(zip)
       const { version, snakeVersion } = this.#getCurrentVersion(solution)
-      const workflows = this.#getWorkflows(customisations)
+      const workflows = this.#getWorkflows(customisations, zip)
 
       this.#origin = {
         zip,
         file,
         name,
-        guid:           '',
-        upperGuid:      '',
+        guid:      '',
+        upperGuid: '',
         version,
         snakeVersion,
         workflows,
-        currentVersion: '',
         customisations,
         solution,
       }
@@ -125,10 +124,10 @@ class Zip implements ZipInterface {
   /**
    * Sets the workflow object with the list of workflows found in the ***Solution*** zip
    */
-  #getWorkflows (customisations: Xml) {
+  #getWorkflows (customisations: Xml, zipContents: JSZip) {
     const data = parser.xml2js(customisations, { compact: true }) as unknown as CustomisationsXml
 
-    const workflowFiles = Object.entries(this.#origin.zip.files).filter(([name]) => name.match(/Workflows\/.+\.json/)).map(file => file[1])
+    const workflowFiles = Object.entries(zipContents.files).filter(([name]) => name.match(/Workflows\/.+\.json/)).map(file => file[1])
 
     return data.ImportExportXml.Workflows.Workflow
       .map(wf => {
@@ -158,7 +157,7 @@ class Zip implements ZipInterface {
 
     this.#origin.solution = this.#origin.solution
       .replace(part, `${part}${copy}`)
-      .replace(`<Version>${this.#origin.currentVersion}</Version>`, `<Version>${this.#solutionCopy.version}</Version>`)
+      .replace(`<Version>${this.#origin.version}</Version>`, `<Version>${this.#solutionCopy.version}</Version>`)
 
     return true
   }

@@ -9,11 +9,10 @@ async function main () {
 
   await zip.load(file, name)
 
-  console.log(`Current Solution version is :
-  ${zip.version}`)
+  console.log(`Current Solution version is: ${zip.version}`)
 
   console.log(`Please select what Flow you want to clone:
-  ${zip.workflows.map(wf => wf.name).join('\n')}`)
+  - ${zip.workflows.map(wf => wf.name).join('\n  - ')}`)
 
   const newFile = await zip.getZipWithCopy('Security Reports Execution', '2.1.0.3', 'f4910f26-8210-ec11-b6e6-002248842287')
 

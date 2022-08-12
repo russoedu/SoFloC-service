@@ -34,7 +34,6 @@ export type OriginT = {
   workflows: Workflow[],
   customisations: Xml
   solution: Xml
-  currentVersion: string
 }
 export type FlowCopyT = {
   guid: string,
