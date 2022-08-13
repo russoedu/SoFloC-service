@@ -23,37 +23,42 @@ interface InputByType {
 
 export type FileInput = InputByType[keyof InputByType] | Promise<InputByType[keyof InputByType]>
 
-export type OriginT = {
-  guid: string,
-  upperGuid: string,
+export type FileDataT = {
   file: FileInput,
   zip: JSZip,
   name: string,
   version: string,
-  snakeVersion: string,
   workflows: Workflow[],
-  customisations: Xml
-  solution: Xml
+  customisations: Xml,
+  solution: Xml,
+  data: string,
 }
-export type FlowCopyT = {
+
+export type FlowDataT = {
   guid: string,
   upperGuid: string,
   name: string,
   fileName: string,
 }
 
-export type NewSolutionT = {
-  version: string,
-  name: string
-}
+export type Base64 = sstring
+
 export interface ZipInterface {
   /**
    * The object with the data related to the origin file
    */
-   #origin: OriginT
+  #file: FileDataT
   /**
    * The object with the data related to the copy
    */
-   #copy: FlowCopyT
-   #solutionCopy: NewSolutionT
+  #flowCopyData: FlowDataT
+
+  name: string
+  version:string
+  workflows: {
+    name: string,
+    id: string,
+  }[]
+
+  data: Base64
 }

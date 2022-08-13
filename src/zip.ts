@@ -3,121 +3,108 @@ import { v4 as uuidv4 } from 'uuid'
 import parser from 'xml-js'
 import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
-import { FileInput, FlowCopyT, NewSolutionT, OriginT, Xml, ZipInterface } from './types'
+import { FileInput, FlowDataT, FileDataT, Xml, ZipInterface } from './types'
 
 class Zip implements ZipInterface {
-  #loaded = false
-  #origin: OriginT
-  #copy: FlowCopyT
-  #solutionCopy: NewSolutionT
+  file: FileDataT
+  #flowCopyData: FlowDataT
 
   /**
    * Loads a ***Solution*** zip file
-   * @param file The ***Solution*** zip Buffer
+   * @param file The ***Solution*** zip file (base64, string, text, binarystring, array, uint8array, arraybuffer, blob or stream)
    * @param name The file name
    */
   async load (file: FileInput, name: string) {
     try {
-      const zip = await this.#getZipContent(file, name)
+      const zip = await this.#getZipContent(file)
       const customisations = await this.#getCustomisations(zip)
       const solution = await this.#getSolution(zip)
-      const { version, snakeVersion } = this.#getCurrentVersion(solution)
+      const version = this.#getCurrentVersion(solution)
       const workflows = this.#getWorkflows(customisations, zip)
+      const data = await this.#getData(zip)
 
-      this.#origin = {
+      this.file = {
         zip,
         file,
         name,
-        guid:      '',
-        upperGuid: '',
         version,
-        snakeVersion,
         workflows,
         customisations,
         solution,
+        data,
       }
-      this.#loaded = true
     } catch (error) {
       console.error(error)
       throw new Error(`Failed to unzip '${name}'`)
     }
   }
 
-  get version () {
-    if (!this.#loaded) throw new Error('You need to load a zip to access this property')
-    return this.#origin.version
-  }
+  async copyFlow (originGuid: string, newFlowName: string, newVersion?: string) {
+    this.#wasLoaded()
+    this.#worflowExists(originGuid)
 
-  get workflows () {
-    if (!this.#loaded) throw new Error('You need to load a zip to access this property')
-    return this.#origin.workflows.map(workflow => ({
-      name: workflow.name,
-      id:   workflow.id,
-    }))
-  }
+    this.#setCopyData(newFlowName)
 
-  async getZipWithCopy (newFlowName: string, newVersion: string, originGui: string) {
-    if (!this.#loaded) throw new Error('You need to load a zip to access this property')
-    if (this.#origin.workflows.findIndex(wf => wf.id === originGui) < 0) throw new Error(`'${originGui}' was not found on this Solution`)
+    if (typeof newVersion === 'string') this.updateVersion(newVersion)
+    this.#updateSolution(originGuid)
+    this.#updateCustomisations(originGuid)
 
-    this.#updateOrigin(originGui)
-    this.#setCopyData(newFlowName, newVersion)
-
-    this.#updateSolution()
-    this.#updateCustomisations()
-
-    return await this.#copyFile()
+    await this.#copyFile(originGuid)
   }
 
   /**
-   * Sets the origin property with the ***Solution*** zip content, file and name.
-   *
-   * The rest of the property is not set in this step but on other steps and upperGuid on the origin property will only be filled after a flow is selected to be copied.
-   *
-   * The version and snakeVersion on the origin property will only be filled after the solution XML is loaded and parsed.
-   * @param file The ***Solution*** zip Buffer
-   * @param name The file name
+   * Updates the version in the file property and inside the solutions XML
+   * @param newVersion The new **Solution** version
    */
-  async #getZipContent (file: FileInput, name: string) {
+  async updateVersion (newVersion: string) {
+    this.#wasLoaded()
+    this.#validateVersion(newVersion)
+
+    this.file.name = this.file.name
+      .replace(this.#snake(this.file.version), this.#snake(newVersion))
+    this.file.solution = this.file.solution
+      .replace(`<Version>${this.file.version}</Version>`, `<Version>${newVersion}</Version>`)
+    this.file.version = newVersion
+  }
+
+  /**
+   * Retrieves the ***Solution*** zip content
+   * @param file The ***Solution*** zip Buffer
+   */
+  async #getZipContent (file: FileInput) {
     try {
       return await JSZip.loadAsync(file)
     } catch (error) {
       console.log(error)
-      throw new Error(`Failed to unzip '${name}'`)
+      throw new Error('Failed to unzip the file')
     }
   }
 
   /**
-   * Sets the customisations property with the customization.xml string
+   * Retrieves the customisations property with the customization.xml string
    */
   async #getCustomisations (zipContents: JSZip) {
     return await this.#getXmlContentFromZip('customizations.xml', zipContents)
   }
 
   /**
-   * Sets the solution property with the customization.xml string
+   * Retrieves the solution property with the customization.xml string
    */
   async #getSolution (zipContents: JSZip) {
     return await this.#getXmlContentFromZip('solution.xml', zipContents)
   }
 
   /**
-   * Sets the ***Solution*** current version in the origin property
+   * Retrieves the ***Solution*** current version in the origin property
    */
   #getCurrentVersion (solution: Xml) {
     try {
       const data = parser.xml2js(solution, { compact: true }) as unknown as SolutionXml
 
-      const version = data.ImportExportXml.SolutionManifest.Version._text
-      const snakeVersion = version.replace(/\./g, '_')
-
-      return {
-        version,
-        snakeVersion,
-      }
+      return data.ImportExportXml.SolutionManifest.Version._text
     } catch (error) {
       console.log(error)
-      throw new Error(`Filed to retrieve the version from '${this.#origin.name}'`)
+      throw new Error(`Filed to retrieve the version from '${this.file.name}'`)
     }
   }
 
@@ -141,23 +128,37 @@ class Zip implements ZipInterface {
   }
 
   /**
+   * Retrieves the zip data
+   * @param zip The **Solution** zip
+   * @returns The generated base64 zip
+   */
+  async #getData (zip: JSZip) {
+    return await zip.generateAsync({
+      type:               'base64',
+      compression:        'DEFLATE',
+      compressionOptions: {
+        level: 9,
+      },
+    })
+  }
+
+  /**
    * Copy the flow inside the Solution XML
    * @returns False in case of an error
    */
-  #updateSolution () {
-    const solutionComponent = `<RootComponent type="29" id="{${this.#origin.guid}}" behavior="0" />`
+  #updateSolution (originGuid: string) {
+    const solutionComponent = `<RootComponent type="29" id="{${originGuid}}" behavior="0" />`
     const solutionWfRegEx = new RegExp(`\r?\n?.+?${solutionComponent}`, 'gm')
 
-    const part = this.#origin.solution.match(solutionWfRegEx)?.[0]
+    const part = this.file.solution.match(solutionWfRegEx)?.[0]
 
     if (!part) return false
 
     const copy = part
-      .replace(this.#origin.guid, this.#copy.guid)
+      .replace(originGuid, this.#flowCopyData.guid)
 
-    this.#origin.solution = this.#origin.solution
+    this.file.solution = this.file.solution
       .replace(part, `${part}${copy}`)
-      .replace(`<Version>${this.#origin.version}</Version>`, `<Version>${this.#solutionCopy.version}</Version>`)
 
     return true
   }
@@ -166,73 +167,51 @@ class Zip implements ZipInterface {
    * Copy the flow inside the Customisations XML
    * @returns False in case of an error
    */
-  #updateCustomisations () {
-    const customisationsComponent = `<Workflow WorkflowId="{${this.#origin.guid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
+  #updateCustomisations (originGuid: string) {
+    const customisationsComponent = `<Workflow WorkflowId="{${originGuid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
     const customisationsWfRegEx = new RegExp(`\r?\n?.+?${customisationsComponent}`, 'gm')
 
-    const part = this.#origin.customisations.match(customisationsWfRegEx)?.[0]
+    const part = this.file.customisations.match(customisationsWfRegEx)?.[0]
 
     if (!part) return false
 
     const JsonFileNameRegEx = /<JsonFileName>(.|\r|\n)+?<\/JsonFileName>/gi
 
     const copy = part
-      .replace(this.#origin.guid, this.#copy.guid)
-      .replace(/Name=".+?"/, `Name="${this.#copy.name}"`)
-      .replace(JsonFileNameRegEx, `<JsonFileName>/${this.#copy.fileName}</JsonFileName>`)
+      .replace(originGuid, this.#flowCopyData.guid)
+      .replace(/Name=".+?"/, `Name="${this.#flowCopyData.name}"`)
+      .replace(JsonFileNameRegEx, `<JsonFileName>/${this.#flowCopyData.fileName}</JsonFileName>`)
 
-    this.#origin.customisations = this.#origin.customisations.replace(part, `${part}${copy}`)
+    this.file.customisations = this.file.customisations.replace(part, `${part}${copy}`)
 
     return true
   }
 
-  async #copyFile (): Promise<false | {zipFile: string, name: string }> {
-    const fileToCopy = this.#origin.workflows.find(wf => wf.file.name.match(this.#origin.upperGuid))
+  async #copyFile (originGuid: string) {
+    const fileToCopy = this.file.workflows.find(wf => wf.file.name.match(originGuid.toUpperCase()))
 
     if (!fileToCopy) return false
 
-    fileToCopy.file.name = this.#copy.fileName
+    fileToCopy.file.name = this.#flowCopyData.fileName
     fileToCopy.file.unsafeOriginalName = fileToCopy.name
 
-    const zipContent = await JSZip.loadAsync(this.#origin.file as any)
-    zipContent.file(fileToCopy.file.name, await fileToCopy.file.async('string'))
-    zipContent.file('solution.xml', this.#origin.solution)
-    zipContent.file('customizations.xml', this.#origin.customisations)
-
-    const zipFile = await zipContent.generateAsync({
-      type:               'base64',
-      compression:        'DEFLATE',
-      compressionOptions: {
-        level: 9,
-      },
-    })
-
-    return {
-      zipFile,
-      name: this.#solutionCopy.name,
-    }
+    // const zipContent = await JSZip.loadAsync(this.#file.file as any)
+    this.file.zip.file(fileToCopy.file.name, await fileToCopy.file.async('string'))
+    this.file.zip.file('solution.xml', this.file.solution)
+    this.file.zip.file('customizations.xml', this.file.customisations)
+    this.file.data = await this.#getData(this.file.zip)
   }
 
-  #updateOrigin (originGui: string) {
-    this.#origin.guid = originGui
-    this.#origin.upperGuid = originGui.toUpperCase()
-  }
-
-  #setCopyData (newFlowName:string, newVersion: string) {
+  #setCopyData (newFlowName:string) {
     const guid = uuidv4()
     const upperGuid = guid.toUpperCase()
     const fileName = `Workflows/${newFlowName.replace(/\s/g, '')}-${upperGuid}.json`
 
-    this.#copy = {
+    this.#flowCopyData = {
       guid,
       upperGuid: guid.toUpperCase(),
       name:      newFlowName,
       fileName,
-    }
-
-    this.#solutionCopy = {
-      version: newVersion,
-      name:    this.#origin.name.replace(this.#origin.snakeVersion, newVersion.replace(/\./g, '_')),
     }
   }
 
@@ -249,8 +228,89 @@ class Zip implements ZipInterface {
       return xml
     } catch (error) {
       console.log(error)
-      throw new Error(`Failed to load '${name}' from '${this.#origin.name}'`)
+      throw new Error(`Failed to load '${name}' from '${this.file.name}'`)
     }
+  }
+
+  /**
+   * Verifies if a workflow exists in the solution
+   */
+  #worflowExists (originGuid: string) {
+    if (this.file.workflows.findIndex(wf => wf.id === originGuid) < 0) throw new Error(`'${originGuid}' was not found on this Solution`)
+  }
+
+  /**
+   * Validates if the new version is valid, Throws an error in case it's not valid
+   * @param newVersion The new **Solution** version
+   */
+  #validateVersion (newVersion: string) {
+    const validRegEx = /^((\d+\.)+\d+)$/
+    if (!validRegEx.exec(newVersion)) {
+      throw new Error(`${newVersion} is not a valid version`)
+    }
+
+    const currentVersionValues = this.version.split('.').map(value => Number(value))
+    const newVersionValues = newVersion.split('.').map(value => Number(value))
+
+    let isValid = false
+    for (let i = 0; i < currentVersionValues.length; i++) {
+      const currentValue = currentVersionValues[i]
+      const newValue = newVersionValues[i]
+      if (typeof newValue === 'undefined') {
+        break
+      } else if (newValue > currentValue) {
+        isValid = true
+        break
+      }
+    }
+    if (!isValid) {
+      throw new Error(`${newVersion} is smaller than ${this.version}`)
+    }
+  }
+
+  /**
+   * Verifies if a file was loaded
+   */
+  #wasLoaded () {
+    if (this.file && typeof this.file.file === 'undefined') throw new Error('You need to load a zip to make a copy')
+  }
+
+  get name () {
+    this.#wasLoaded()
+    return this.file.name
+  }
+
+  get data () {
+    this.#wasLoaded()
+    return this.file.data
+  }
+
+  /**
+   * The current version of the **Solution**
+   */
+  get version () {
+    this.#wasLoaded()
+    return this.file.version
+  }
+
+  /**
+   * The workflows found in the **Solution**
+   */
+  get workflows () {
+    this.#wasLoaded()
+    return this.file.workflows
+      .map(workflow => ({
+        name: workflow.name,
+        id:   workflow.id,
+      }))
+  }
+
+  #snake (text: string) {
+    return text.replaceAll('.', '_')
+  }
+
+  #upper (text:string) {
+    return text.toUpperCase()
   }
 }
 

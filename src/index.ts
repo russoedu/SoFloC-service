@@ -14,12 +14,10 @@ async function main () {
   console.log(`Please select what Flow you want to clone:
   - ${zip.workflows.map(wf => wf.name).join('\n  - ')}`)
 
-  const newFile = await zip.getZipWithCopy('Security Reports Execution', '2.1.0.3', 'f4910f26-8210-ec11-b6e6-002248842287')
+  await zip.copyFlow('f4910f26-8210-ec11-b6e6-002248842287', 'Security Reports Execution', '2.1.0.3')
 
-  if (newFile) {
-    const newPath = join('files', newFile.name)
-    console.log('done')
-    writeFileSync(newPath, newFile.zipFile, 'base64')
-  }
+  const newPath = join('files', zip.name)
+  writeFileSync(newPath, zip.data, 'base64')
+  console.log('done')
 }
 main()
