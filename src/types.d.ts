@@ -4,11 +4,6 @@ import JSZip, { JSZipObject } from 'jszip'
 
 export type Xml = string
 
-export type Workflow = {
-  name: string,
-  id: string,
-  file: JSZipObject,
-}
 interface InputByType {
   base64: string;
   string: string;
@@ -23,18 +18,7 @@ interface InputByType {
 
 export type FileInput = InputByType[keyof InputByType] | Promise<InputByType[keyof InputByType]>
 
-export type FileDataT = {
-  file: FileInput,
-  zip: JSZip,
-  name: string,
-  version: string,
-  workflows: Workflow[],
-  customisations: Xml,
-  solution: Xml,
-  data: string,
-}
-
-export type FlowDataT = {
+export type FlowCopyT = {
   guid: string,
   upperGuid: string,
   name: string,
@@ -43,22 +27,35 @@ export type FlowDataT = {
 
 export type Base64 = sstring
 
-export interface ZipInterface {
+export interface PAFloCInterface {
   /**
-   * The object with the data related to the origin file
+   * The ***Solution*** file name. It is update as a new version is set
    */
-  #file: FileDataT
-  /**
-   * The object with the data related to the copy
-   */
-  #flowCopyData: FlowDataT
-
   name: string
-  version:string
+  /**
+   * The ***Solution*** version. It is update as a new version is set
+   */
+  version: string
+  /**
+   * The list of workflows in the ***Solution***. It is updated as new copies are added.
+   */
   workflows: {
     name: string,
     id: string,
   }[]
-
+  /**
+   * The ***Solution*** data as Base64. It is updated as new copies are added.
+   */
   data: Base64
+
+  #file: FileInput
+  #zip: JSZip
+  #workflows: {
+    name: string,
+    id: string,
+    file: JSZipObject,
+  }[]
+  #customisations: Xml
+  #solution: Xml
+
 }
