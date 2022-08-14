@@ -186,12 +186,14 @@ class PAFloC implements PAFloCInterface {
 
     if (!part) throw new Error(`The GUID '${flowGuid}' was not found found in 'customizations.xml' `)
 
-    const JsonFileNameRegEx = /<JsonFileName>(.|\r|\n)+?<\/JsonFileName>/gi
+    const jsonFileNameRegEx = /<JsonFileName>(.|\r|\n)+?<\/JsonFileName>/gi
+    const introducedVersionRegEx = /<IntroducedVersion>(.|\r|\n)+?<\/IntroducedVersion>/gi
 
     const copy = part
       .replace(flowGuid, copyData.guid)
       .replace(/Name=".+?"/, `Name="${copyData.name}"`)
-      .replace(JsonFileNameRegEx, `<JsonFileName>/${copyData.fileName}</JsonFileName>`)
+      .replace(jsonFileNameRegEx, `<JsonFileName>/${copyData.fileName}</JsonFileName>`)
+      .replace(introducedVersionRegEx, `<IntroducedVersion>${this.version}</IntroducedVersion>`)
 
     this.#customisations = this.#customisations.replace(part, `${part}${copy}`)
   }
