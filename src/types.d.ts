@@ -25,7 +25,7 @@ export type FlowCopyT = {
   fileName: string,
 }
 
-export type Base64 = sstring
+export type Base64 = string
 
 export interface PAFloCInterface {
   /**

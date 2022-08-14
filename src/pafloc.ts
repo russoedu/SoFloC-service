@@ -1,4 +1,4 @@
-import JSZip, { JSZipObject } from 'jszip'
+import JSZip, { JSZipObject, loadAsync } from 'jszip'
 import { v4 as uuidv4 } from 'uuid'
 import parser from 'xml-js'
 import { CustomisationsXml } from './customisations'
@@ -78,7 +78,7 @@ class PAFloC implements PAFloCInterface {
    */
   async #getZipContent (file: FileInput) {
     try {
-      return await JSZip.loadAsync(file)
+      return await loadAsync(file)
     } catch (error) {
       console.log(error)
       throw new Error('Failed to unzip the file')
@@ -133,7 +133,7 @@ class PAFloC implements PAFloCInterface {
         return {
           name: wf._attributes.Name,
           id,
-          file: workflowFiles.find(wf => wf.name.includes(id.toUpperCase())) as JSZip.JSZipObject,
+          file: workflowFiles.find(file => file.name.includes(id.toUpperCase())) as JSZipObject,
         }
       })
   }
