@@ -1,4 +1,5 @@
 
+/* istanbul ignore file */
 interface EMailAddress {
   _attributes: {
     'xsi:nil': string,

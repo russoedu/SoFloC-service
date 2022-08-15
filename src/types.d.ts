@@ -1,4 +1,5 @@
 /* eslint-disable no-undef */
+/* istanbul ignore file */
 
 import JSZip, { JSZipObject } from 'jszip'
 

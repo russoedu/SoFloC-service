@@ -1,6 +1,6 @@
 import JSZip, { JSZipObject, loadAsync } from 'jszip'
 import { v4 as uuidv4 } from 'uuid'
-import parser from 'xml-js'
+import { xml2js } from 'xml-js'
 import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
 import { Base64, FileInput, FlowCopyT, PAFloCInterface, Xml } from './types'
@@ -12,7 +12,9 @@ class PAFloC implements PAFloCInterface {
   version: string
   #workflows: { name: string, id: string, file: JSZipObject }[]
   #customisations: Xml
+  #customisationsData: CustomisationsXml
   #solution: Xml
+  #solutionData: SolutionXml
   data: Base64
 
   /**
@@ -21,21 +23,22 @@ class PAFloC implements PAFloCInterface {
    * @param name The file name
    */
   async load (file: FileInput, name: string) {
-    try {
-      this.#file = file
-      this.name = name
+    this.#file = file
+    this.name = name
 
-      this.#zip = await this.#getZipContent(file)
-      this.#customisations = await this.#getCustomisations(this.#zip)
-      this.#solution = await this.#getSolution(this.#zip)
+    this.#zip = await this.#unzip(file)
 
-      this.version = this.#getCurrentVersion(this.#solution)
-      this.#workflows = this.#getWorkflows(this.#customisations, this.#zip)
-      this.data = await this.#getData(this.#zip)
-    } catch (error) {
-      console.error(error)
-      throw new Error(`Failed to unzip '${name}'`)
-    }
+    const [customisations, customisationsData] = await this.#getCustomisations(this.#zip)
+    this.#customisations = customisations
+    this.#customisationsData = customisationsData
+
+    const [solution, solutionData] = await this.#getSolution(this.#zip)
+    this.#solution = solution
+    this.#solutionData = solutionData
+
+    this.version = this.#getCurrentVersion(this.#solutionData)
+    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#zip)
+    this.data = await this.#getData(this.#zip)
   }
 
   /**
@@ -76,7 +79,7 @@ class PAFloC implements PAFloCInterface {
    * Retrieves the ***Solution*** zip content
    * @param file The ***Solution*** zip file (base64, string, text, binarystring, array, uint8array, arraybuffer, blob or stream)
    */
-  async #getZipContent (file: FileInput) {
+  async #unzip (file: FileInput) {
     try {
       return await loadAsync(file)
     } catch (error) {
@@ -89,27 +92,25 @@ class PAFloC implements PAFloCInterface {
    * Retrieves the customization.xml string
    * @param zip The ***Solution*** JSZip content
    */
-  async #getCustomisations (zip: JSZip): Promise<Xml> {
-    return await this.#getXmlContentFromZip('customizations', zip)
+  async #getCustomisations (zip: JSZip): Promise<[Xml, CustomisationsXml]> {
+    return (await this.#getXmlContentFromZip('customizations', zip)) as [Xml, CustomisationsXml]
   }
 
   /**
    * Retrieves the customization.xml string
    * @param zip The ***Solution*** JSZip content
    */
-  async #getSolution (zip: JSZip): Promise<Xml> {
-    return await this.#getXmlContentFromZip('solution', zip)
+  async #getSolution (zip: JSZip): Promise<[Xml, SolutionXml]> {
+    return (await this.#getXmlContentFromZip('solution', zip)) as [Xml, SolutionXml]
   }
 
   /**
    * Retrieves the ***Solution*** current version from solution.xml
    * @param solution The solution.xml
    */
-  #getCurrentVersion (solution: Xml) {
+  #getCurrentVersion (solution: SolutionXml) {
     try {
-      const data = parser.xml2js(solution, { compact: true }) as unknown as SolutionXml
-
-      return data.ImportExportXml.SolutionManifest.Version._text
+      return solution.ImportExportXml.SolutionManifest.Version._text
     } catch (error) {
       console.log(error)
       throw new Error(`Filed to retrieve the version from '${this.name}'`)
@@ -122,18 +123,16 @@ class PAFloC implements PAFloCInterface {
    * @param zip The ***Solution*** JSZip content
    * @returns The workflows list
    */
-  #getWorkflows (customisations: Xml, zip: JSZip) {
-    const data = parser.xml2js(customisations, { compact: true }) as unknown as CustomisationsXml
-
+  #getWorkflows (customisations: CustomisationsXml, zip: JSZip) {
     const workflowFiles = Object.entries(zip.files).filter(([name]) => name.match(/Workflows\/.+\.json/)).map(file => file[1])
 
-    return data.ImportExportXml.Workflows.Workflow
-      .map(wf => {
-        const id = wf._attributes.WorkflowId.replace(/{|}/g, '')
+    return customisations.ImportExportXml.Workflows.Workflow
+      .map(workflow => {
+        const id = workflow._attributes.WorkflowId.replace(/{|}/g, '')
         return {
-          name: wf._attributes.Name,
+          name: workflow._attributes.Name,
           id,
-          file: workflowFiles.find(file => file.name.includes(id.toUpperCase())) as JSZipObject,
+          file: workflowFiles.find(workflowFile => workflowFile.name.includes(id.toUpperCase())) as JSZipObject,
         }
       })
   }
@@ -213,7 +212,7 @@ class PAFloC implements PAFloCInterface {
     this.#zip.file('customizations.xml', this.#customisations)
 
     this.data = await this.#getData(this.#zip)
-    this.#workflows = this.#getWorkflows(this.#customisations, this.#zip)
+    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#zip)
   }
 
   /**
@@ -239,12 +238,16 @@ class PAFloC implements PAFloCInterface {
    * @param xmlName The name of the XML to be retrieved (without extension)
    * @returns The string content of the XML
    */
-  async #getXmlContentFromZip (xmlName: string, zipContents: JSZip): Promise<Xml> {
+  async #getXmlContentFromZip (xmlName: string, zipContents: JSZip): Promise<[Xml, CustomisationsXml|SolutionXml]> {
     try {
       const file = zipContents.files[`${xmlName}.xml`]
       const xml = await file.async('string')
+      const data = xml2js(xml, { compact: true }) as CustomisationsXml
 
-      return xml
+      return [
+        xml,
+        data,
+      ]
     } catch (error) {
       console.log(error)
       throw new Error(`Failed to load '${xmlName}' from '${this.name}'`)

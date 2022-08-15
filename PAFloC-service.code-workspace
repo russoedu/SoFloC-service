@@ -28,7 +28,8 @@
       "package.json",
       "./src/index.ts",
       "./src/index.test.ts"
-    ]
+    ],
+    "typescript.tsdk": "node_modules\\typescript\\lib"
   },
   "launch": {
     "configurations": [

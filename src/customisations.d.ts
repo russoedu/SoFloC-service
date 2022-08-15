@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 interface Attributes {
   'xmlns:xsi': string,
 }

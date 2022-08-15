@@ -2,7 +2,7 @@ module.exports = {
   root:   true,
   parser: '@typescript-eslint/parser',
   env:    {
-    es2021: true,
+    es2022: true,
     node:   true,
     jest:   true,
   },
@@ -14,7 +14,7 @@ module.exports = {
     '@typescript-eslint', // Let's us override rules below.
   ],
   parserOptions: {
-    ecmaVersion: 2021,
+    ecmaVersion: 2022,
     sourceType:  'module',
   },
   rules: {
