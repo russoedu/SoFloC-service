@@ -14,7 +14,7 @@ module.exports = {
     '@typescript-eslint', // Let's us override rules below.
   ],
   parserOptions: {
-    ecmaVersion: 2022,
+    ecmaVersion: 2021,
     sourceType:  'module',
   },
   rules: {

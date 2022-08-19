@@ -1,0 +1,21 @@
+<ImportExportXml version="9.2.22064.200" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SolutionManifest>
+    <UniqueName>TestSolution</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="PAFloC Test Solution" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions>
+      <Description description="A solution used to test PAFloC" languagecode="1033" />
+    </Descriptions>
+    <Version>2.1.0.0</Version>
+    <Managed>0</Managed>
+    <RootComponents>
+      <RootComponent type="29" id="{0f48cba9-ef0c-ed11-82e4-000d3a64f6f2}" behavior="0" />
+      <RootComponent type="29" id="{23456789-zzzz-xxxx-yyyy-765432109876}" behavior="0" />
+      <RootComponent type="29" id="{12345678-yyyy-zzzz-xxxx-876543210987}" behavior="0" />
+      <RootComponent type="29" id="{f4910f26-8210-ec11-b6e6-002248842287}" behavior="0" />
+      <RootComponent type="29" id="{01234567-xxxx-yyyy-zzzz-987654321098}" behavior="0" />
+    </RootComponents>
+    <MissingDependencies />
+  </SolutionManifest>
+</ImportExportXml>

@@ -1,5 +1,5 @@
+import { randomUUID } from 'crypto'
 import JSZip, { JSZipObject, loadAsync } from 'jszip'
-import { v4 as uuidv4 } from 'uuid'
 import { xml2js } from 'xml-js'
 import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
@@ -10,12 +10,12 @@ class PAFloC implements PAFloCInterface {
   #zip: JSZip
   name: string
   version: string
+  data: Base64
   #workflows: { name: string, id: string, file: JSZipObject }[]
   #customisations: Xml
   #customisationsData: CustomisationsXml
   #solution: Xml
   #solutionData: SolutionXml
-  data: Base64
 
   /**
    * Loads a ***Solution*** zip file and make it ready to copy flows and update the version.
@@ -23,8 +23,8 @@ class PAFloC implements PAFloCInterface {
    * @param name The file name
    */
   async load (file: FileInput, name: string) {
+    this.#cleanUp()
     this.#file = file
-    this.name = name
 
     this.#zip = await this.#unzip(file)
 
@@ -39,23 +39,28 @@ class PAFloC implements PAFloCInterface {
     this.version = this.#getCurrentVersion(this.#solutionData)
     this.#workflows = this.#getWorkflows(this.#customisationsData, this.#zip)
     this.data = await this.#getData(this.#zip)
+
+    this.name = name
   }
 
   /**
    * Copies a flow in the ***Solution***.
    * @param flowGuid The GUID of the flow to be copied
    * @param newFlowName The name of the copy
-   * @param newVersion Optional parameter to update the ***Solution*** version. The new version must be bigger than the previous.
    */
-  async copyFlow (flowGuid: string, newFlowName: string, newVersion?: string) {
+  async copyFlow (flowGuid: string, newFlowName: string) {
     this.#wasLoaded()
     this.#worflowExists(flowGuid)
 
     const copyData = this.#getCopyData(newFlowName)
 
-    if (typeof newVersion === 'string') this.updateVersion(newVersion)
-    this.#updateSolution(flowGuid, copyData)
-    this.#updateCustomisations(flowGuid, copyData)
+    const [customisations, customisationsData] = this.#getUpdatedCustomisations(flowGuid, copyData)
+    this.#customisations = customisations
+    this.#customisationsData = customisationsData
+
+    const [solution, solutionData] = this.#getUpdateSolution(flowGuid, copyData)
+    this.#solution = solution
+    this.#solutionData = solutionData
 
     await this.#copyFile(flowGuid, copyData)
   }
@@ -81,7 +86,10 @@ class PAFloC implements PAFloCInterface {
    */
   async #unzip (file: FileInput) {
     try {
-      return await loadAsync(file)
+      const options = typeof file === 'string'
+        ? { base64: true }
+        : {}
+      return await loadAsync(file, options)
     } catch (error) {
       console.log(error)
       throw new Error('Failed to unzip the file')
@@ -157,19 +165,25 @@ class PAFloC implements PAFloCInterface {
    * @param flowGuid The GUID of the original flow to be copied
    * @param copyData The data of the flow copy
    */
-  #updateSolution (flowGuid: string, copyData: FlowCopyT) {
-    const solutionComponent = `<RootComponent type="29" id="{${flowGuid}}" behavior="0" />`
-    const solutionWfRegEx = new RegExp(`\r?\n?.+?${solutionComponent}`, 'gm')
+  #getUpdateSolution (flowGuid: string, copyData: FlowCopyT): [Xml, SolutionXml] {
+    const rootComponent = `<RootComponent type="29" id="{${flowGuid}}" behavior="0" />`
+    const rootRegEx = new RegExp(`\r?\n?.+?${rootComponent}`, 'gm')
 
-    const part = this.#solution.match(solutionWfRegEx)?.[0]
+    const rootMatch = this.#solution.match(rootRegEx)?.[0]
 
-    if (!part) throw new Error(`The GUID '${flowGuid}' was not found found in 'solution.xml' `)
+    if (!rootMatch) throw new Error(`The GUID '${flowGuid}' was not found found in 'solution.xml' `)
 
-    const copy = part
+    const copy = rootMatch
       .replace(flowGuid, copyData.guid)
 
-    this.#solution = this.#solution
-      .replace(part, `${part}${copy}`)
+    const solution = this.#solution
+      .replace(rootMatch, `${rootMatch}${copy}`)
+    const data = xml2js(solution, { compact: true }) as SolutionXml
+
+    return [
+      solution,
+      data,
+    ]
   }
 
   /**
@@ -177,7 +191,7 @@ class PAFloC implements PAFloCInterface {
    * @param flowGuid The GUID of the original flow to be copied
    * @param copyData The data of the flow copy
    */
-  #updateCustomisations (flowGuid: string, copyData: FlowCopyT) {
+  #getUpdatedCustomisations (flowGuid: string, copyData: FlowCopyT): [Xml, CustomisationsXml] {
     const customisationsComponent = `<Workflow WorkflowId="{${flowGuid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
     const customisationsWfRegEx = new RegExp(`\r?\n?.+?${customisationsComponent}`, 'gm')
 
@@ -194,7 +208,13 @@ class PAFloC implements PAFloCInterface {
       .replace(jsonFileNameRegEx, `<JsonFileName>/${copyData.fileName}</JsonFileName>`)
       .replace(introducedVersionRegEx, `<IntroducedVersion>${this.version}</IntroducedVersion>`)
 
-    this.#customisations = this.#customisations.replace(part, `${part}${copy}`)
+    const customisations = this.#customisations.replace(part, `${part}${copy}`)
+    const data = xml2js(customisations, { compact: true }) as CustomisationsXml
+
+    return [
+      customisations,
+      data,
+    ]
   }
 
   /**
@@ -221,14 +241,14 @@ class PAFloC implements PAFloCInterface {
    * @returns The flow copy data
    */
   #getCopyData (newFlowName:string) {
-    const guid = uuidv4()
+    const guid = randomUUID()
     const upperGuid = guid.toUpperCase()
     const fileName = `Workflows/${newFlowName.replace(/\s/g, '')}-${upperGuid}.json`
 
     return {
       guid,
-      upperGuid: guid.toUpperCase(),
-      name:      newFlowName,
+      upperGuid,
+      name: newFlowName,
       fileName,
     }
   }
@@ -297,13 +317,26 @@ class PAFloC implements PAFloCInterface {
     if (this.#file && typeof this.#file === 'undefined') throw new Error('You need to load a zip to make a copy')
   }
 
+  #cleanUp () {
+    this.#file = undefined as any
+    this.#zip = undefined as any
+    this.#customisations = undefined as any
+    this.#customisationsData = undefined as any
+    this.#solution = undefined as any
+    this.#solutionData = undefined as any
+    this.version = undefined as any
+    this.#workflows = undefined as any
+    this.data = undefined as any
+    this.name = undefined as any
+  }
+
   get workflows () {
     this.#wasLoaded()
-    return this.#workflows
-      .map(workflow => ({
-        name: workflow.name,
-        id:   workflow.id,
-      }))
+    if (typeof this.#workflows === 'undefined') return []
+    return this.#workflows.map(workflow => ({
+      name: workflow.name,
+      id:   workflow.id,
+    }))
   }
 
   /**

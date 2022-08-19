@@ -18,18 +18,16 @@
       ".gitignore": true,
       "node_modules": true,
       "package-lock.json": true,
-      "tsconfig.json": true,
+      // "tsconfig.json": true,
+      "jsconfig.json": true,
       ".eslintrc.js": true,
       ".npmignore": true,
       "jest.config.js": true,
-      "lib": true
+      "lib": true,
+      "LICENSE": true,
+      "coverage": true
     },
-    "favorites.resources": [
-      "package.json",
-      "./src/index.ts",
-      "./src/index.test.ts"
-    ],
-    "typescript.tsdk": "node_modules\\typescript\\lib"
+    "typescript.tsdk": ".\\\\node_modules\\\\typescript\\\\lib"
   },
   "launch": {
     "configurations": [
