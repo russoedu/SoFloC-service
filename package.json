@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "description": "Service to copy the flow inside a solution package",
   "scripts": {
-    "start": "node .",
-    "buildAndStart": "tsc && node .",
     "build": "tsc",
     "prepare": "npm run build",
     "prepublishOnly": "npm test",
@@ -29,7 +27,7 @@
     "power platform",
     "copy"
   ],
-  "main": "lib/index.js",
+  "main": "lib/pafloc.js",
   "directories": {
     "lib": "lib"
   },
@@ -37,23 +35,23 @@
     "lib"
   ],
   "devDependencies": {
-    "@types/jest": "^27.5.2",
-    "@types/node": "^18.6.1",
-    "@typescript-eslint/eslint-plugin": "^5.31.0",
-    "@typescript-eslint/parser": "^5.31.0",
+    "@types/jest": "^28.1.7",
+    "@types/node": "^18.7.8",
+    "@typescript-eslint/eslint-plugin": "^5.33.1",
+    "@typescript-eslint/parser": "^5.33.1",
     "coveralls": "^3.1.1",
-    "eslint": "^8.20.0",
+    "eslint": "^8.22.0",
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.0.0",
     "jest": "^28.1.3",
     "jest-junit": "^14.0.0",
-    "ts-jest": "^28.0.7",
+    "ts-jest": "^28.0.8",
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "camelcase": "^5.3.1",
+    "camelcase": "^7.0.0",
     "jszip": "^3.10.0",
     "xml-js": "^1.6.11"
   }

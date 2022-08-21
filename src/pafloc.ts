@@ -1,22 +1,11 @@
 import { randomUUID } from 'crypto'
-import JSZip, { JSZipObject, loadAsync } from 'jszip'
+import JSZip from 'jszip'
 import { xml2js } from 'xml-js'
 import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
-import { Base64, FileInput, FlowCopyT, PAFloCInterface, Xml } from './types'
+import { Base64, FileInput, FlowCopyT, PAFloCInterface, PrivateWorkflowT, WorkflowT, Xml } from './types'
 
 class PAFloC implements PAFloCInterface {
-  #file: FileInput
-  #zip: JSZip
-  name: string
-  version: string
-  data: Base64
-  #workflows: { name: string, id: string, file: JSZipObject }[]
-  #customisations: Xml
-  #customisationsData: CustomisationsXml
-  #solution: Xml
-  #solutionData: SolutionXml
-
   /**
    * Loads a ***Solution*** zip file and make it ready to copy flows and update the version.
    * @param file The ***Solution*** zip file (base64, string, text, binarystring, array, uint8array, arraybuffer, blob or stream)
@@ -37,7 +26,7 @@ class PAFloC implements PAFloCInterface {
     this.#solutionData = solutionData
 
     this.version = this.#getCurrentVersion(this.#solutionData)
-    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#zip)
+    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
     this.data = await this.#getData(this.#zip)
 
     this.name = name
@@ -80,6 +69,32 @@ class PAFloC implements PAFloCInterface {
     this.version = newVersion
   }
 
+  get workflows () {
+    this.#wasLoaded()
+    if (typeof this.#workflows === 'undefined') return []
+    return this.#workflows.map(workflow => ({
+      name: workflow.name,
+      id:   workflow.id,
+    })) as WorkflowT[]
+  }
+
+  /* #region LOAD METHODS */
+  /**
+   * Resets the loaded data
+   */
+  #cleanUp () {
+    this.#file = undefined as any
+    this.#zip = undefined as any
+    this.#customisations = undefined as any
+    this.#customisationsData = undefined as any
+    this.#solution = undefined as any
+    this.#solutionData = undefined as any
+    this.version = undefined as any
+    this.#workflows = undefined as any
+    this.data = undefined as any
+    this.name = undefined as any
+  }
+
   /**
    * Retrieves the ***Solution*** zip content
    * @param file The ***Solution*** zip file (base64, string, text, binarystring, array, uint8array, arraybuffer, blob or stream)
@@ -89,7 +104,7 @@ class PAFloC implements PAFloCInterface {
       const options = typeof file === 'string'
         ? { base64: true }
         : {}
-      return await loadAsync(file, options)
+      return await JSZip.loadAsync(file, options)
     } catch (error) {
       console.log(error)
       throw new Error('Failed to unzip the file')
@@ -113,6 +128,27 @@ class PAFloC implements PAFloCInterface {
   }
 
   /**
+   * Retrieves a XML from the ***Solution*** zip.
+   * @param xmlName The name of the XML to be retrieved (without extension)
+   * @returns The string content of the XML
+   */
+  async #getXmlContentFromZip (xmlName: string, zipContents: JSZip): Promise<[Xml, CustomisationsXml | SolutionXml]> {
+    try {
+      const file = zipContents.files[`${xmlName}.xml`]
+      const xml = await file.async('string')
+      const data = xml2js(xml, { compact: true }) as CustomisationsXml
+
+      return [
+        xml,
+        data,
+      ]
+    } catch (error) {
+      console.log(error)
+      throw new Error(`'${xmlName}.xml' was not found in the Solution zip`)
+    }
+  }
+
+  /**
    * Retrieves the ***Solution*** current version from solution.xml
    * @param solution The solution.xml
    */
@@ -121,7 +157,7 @@ class PAFloC implements PAFloCInterface {
       return solution.ImportExportXml.SolutionManifest.Version._text
     } catch (error) {
       console.log(error)
-      throw new Error(`Filed to retrieve the version from '${this.name}'`)
+      throw new Error('Failed to retrieve the version')
     }
   }
 
@@ -131,18 +167,23 @@ class PAFloC implements PAFloCInterface {
    * @param zip The ***Solution*** JSZip content
    * @returns The workflows list
    */
-  #getWorkflows (customisations: CustomisationsXml, zip: JSZip) {
+  #getWorkflows (customisations: CustomisationsXml, solution: SolutionXml, zip: JSZip) {
     const workflowFiles = Object.entries(zip.files).filter(([name]) => name.match(/Workflows\/.+\.json/)).map(file => file[1])
 
-    return customisations.ImportExportXml.Workflows.Workflow
+    const workflows = customisations.ImportExportXml.Workflows.Workflow
       .map(workflow => {
         const id = workflow._attributes.WorkflowId.replace(/{|}/g, '')
-        return {
-          name: workflow._attributes.Name,
-          id,
-          file: workflowFiles.find(workflowFile => workflowFile.name.includes(id.toUpperCase())) as JSZipObject,
-        }
+        const isOnSolution = solution.ImportExportXml.SolutionManifest.RootComponents.RootComponent.findIndex(wf => wf._attributes.id.includes(id)) >= 0
+        const file = workflowFiles.find(workflowFile => workflowFile.name.includes(id.toUpperCase())) as JSZip.JSZipObject
+        return !!file && !!id && isOnSolution
+          ? {
+              name: workflow._attributes.Name,
+              id,
+              file,
+            }
+          : null
       })
+    return workflows.filter(workflow => workflow !== null) as PrivateWorkflowT[]
   }
 
   /**
@@ -159,6 +200,41 @@ class PAFloC implements PAFloCInterface {
       },
     })
   }
+  /* #endregion */
+
+  /* #region COPY FLOW METHODS */
+  /**
+   * Verifies if a ***Solution*** was loaded
+   */
+  #wasLoaded () {
+    const undef = typeof this.#file === 'undefined'
+    if (undef) throw new Error('Solution was not loaded')
+  }
+
+  /**
+   * Verifies if a specified workflow exists in the ***Solution***
+   */
+  #worflowExists (flowGuid: string) {
+    if (this.#workflows.findIndex(wf => wf.id === flowGuid) < 0) throw new Error(`Workflow file with GUID '${flowGuid}' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'`)
+  }
+
+  /**
+   * Retrieves an object containing the information of the flow copy
+   * @param newFlowName The name of the flow copy
+   * @returns The flow copy data
+   */
+  #getCopyData (newFlowName: string) {
+    const guid = randomUUID()
+    const upperGuid = guid.toUpperCase()
+    const fileName = `Workflows/${newFlowName.replace(/\s/g, '')}-${upperGuid}.json`
+
+    return {
+      guid,
+      upperGuid,
+      name: newFlowName,
+      fileName,
+    }
+  }
 
   /**
    * Copies the flow inside solution.xml
@@ -169,15 +245,13 @@ class PAFloC implements PAFloCInterface {
     const rootComponent = `<RootComponent type="29" id="{${flowGuid}}" behavior="0" />`
     const rootRegEx = new RegExp(`\r?\n?.+?${rootComponent}`, 'gm')
 
-    const rootMatch = this.#solution.match(rootRegEx)?.[0]
+    const part = this.#solution.match(rootRegEx)?.[0] as string
 
-    if (!rootMatch) throw new Error(`The GUID '${flowGuid}' was not found found in 'solution.xml' `)
-
-    const copy = rootMatch
+    const copy = part
       .replace(flowGuid, copyData.guid)
 
     const solution = this.#solution
-      .replace(rootMatch, `${rootMatch}${copy}`)
+      .replace(part, `${part}${copy}`)
     const data = xml2js(solution, { compact: true }) as SolutionXml
 
     return [
@@ -195,9 +269,7 @@ class PAFloC implements PAFloCInterface {
     const customisationsComponent = `<Workflow WorkflowId="{${flowGuid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
     const customisationsWfRegEx = new RegExp(`\r?\n?.+?${customisationsComponent}`, 'gm')
 
-    const part = this.#customisations.match(customisationsWfRegEx)?.[0]
-
-    if (!part) throw new Error(`The GUID '${flowGuid}' was not found found in 'customizations.xml' `)
+    const part = this.#customisations.match(customisationsWfRegEx)?.[0] as string
 
     const jsonFileNameRegEx = /<JsonFileName>(.|\r|\n)+?<\/JsonFileName>/gi
     const introducedVersionRegEx = /<IntroducedVersion>(.|\r|\n)+?<\/IntroducedVersion>/gi
@@ -223,64 +295,18 @@ class PAFloC implements PAFloCInterface {
    * @param copyData The data of the flow copy
    */
   async #copyFile (flowGuid: string, copyData: FlowCopyT) {
-    const fileToCopy = this.#workflows.find(wf => wf.id === flowGuid.toLowerCase())
-
-    if (!fileToCopy) throw new Error('Workflow not found in the zip')
+    const fileToCopy = this.#workflows.find(wf => wf.id === flowGuid.toLowerCase()) as PrivateWorkflowT
 
     this.#zip.file(copyData.fileName, await fileToCopy.file.async('string'))
     this.#zip.file('solution.xml', this.#solution)
     this.#zip.file('customizations.xml', this.#customisations)
 
     this.data = await this.#getData(this.#zip)
-    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#zip)
+    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
   }
+  /* #endregion */
 
-  /**
-   * Retrieves an object containing the information of the flow copy
-   * @param newFlowName The name of the flow copy
-   * @returns The flow copy data
-   */
-  #getCopyData (newFlowName:string) {
-    const guid = randomUUID()
-    const upperGuid = guid.toUpperCase()
-    const fileName = `Workflows/${newFlowName.replace(/\s/g, '')}-${upperGuid}.json`
-
-    return {
-      guid,
-      upperGuid,
-      name: newFlowName,
-      fileName,
-    }
-  }
-
-  /**
-   * Retrieves a XML from the ***Solution*** zip.
-   * @param xmlName The name of the XML to be retrieved (without extension)
-   * @returns The string content of the XML
-   */
-  async #getXmlContentFromZip (xmlName: string, zipContents: JSZip): Promise<[Xml, CustomisationsXml|SolutionXml]> {
-    try {
-      const file = zipContents.files[`${xmlName}.xml`]
-      const xml = await file.async('string')
-      const data = xml2js(xml, { compact: true }) as CustomisationsXml
-
-      return [
-        xml,
-        data,
-      ]
-    } catch (error) {
-      console.log(error)
-      throw new Error(`Failed to load '${xmlName}' from '${this.name}'`)
-    }
-  }
-
-  /**
-   * Verifies if a workflow exists in the ***Solution***
-   */
-  #worflowExists (originGuid: string) {
-    if (this.#workflows.findIndex(wf => wf.id === originGuid) < 0) throw new Error(`'${originGuid}' was not found on this Solution`)
-  }
-
+  /* #region UPDATE VERION METHODS */
   /**
    * Validates if the new version is valid
    * @param newVersion The new ***Solution*** version
@@ -288,57 +314,32 @@ class PAFloC implements PAFloCInterface {
   #validateVersion (newVersion: string) {
     const validRegEx = /^((\d+\.)+\d+)$/
     if (!validRegEx.exec(newVersion)) {
-      throw new Error(`${newVersion} is not a valid version. It should follow the format <major>.<minor>.<build>.<revision>.`)
+      throw new Error(`Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<build>.<revision>.`)
     }
 
     const currentVersionValues = this.version.split('.').map(value => Number(value))
     const newVersionValues = newVersion.split('.').map(value => Number(value))
 
-    let isValid = false
+    let currentValueString = ''
+    let newValueString = ''
     for (let i = 0; i < currentVersionValues.length; i++) {
       const currentValue = currentVersionValues[i]
       const newValue = newVersionValues[i]
-      if (typeof newValue === 'undefined') {
-        break
-      } else if (newValue > currentValue) {
-        isValid = true
-        break
-      }
+
+      const currentValueLength = String(currentValue).length
+      const newValueLength = String(newValue).length
+
+      const maxLength = Math.max(currentValueLength, newValueLength)
+
+      currentValueString += '0'.repeat(maxLength - currentValueLength) + String(currentValue)
+      newValueString += '0'.repeat(maxLength - newValueLength) + String(newValue)
     }
-    if (!isValid) {
-      throw new Error(`${newVersion} is smaller than ${this.version}`)
-    }
-  }
 
-  /**
-   * Verifies if a ***Solution*** was loaded
-   */
-  #wasLoaded () {
-    if (this.#file && typeof this.#file === 'undefined') throw new Error('You need to load a zip to make a copy')
+    if (Number(newValueString) <= Number(currentValueString)) throw new Error(`Version '${newVersion}' is smaller than '${this.version}'`)
   }
+  /* #endregion */
 
-  #cleanUp () {
-    this.#file = undefined as any
-    this.#zip = undefined as any
-    this.#customisations = undefined as any
-    this.#customisationsData = undefined as any
-    this.#solution = undefined as any
-    this.#solutionData = undefined as any
-    this.version = undefined as any
-    this.#workflows = undefined as any
-    this.data = undefined as any
-    this.name = undefined as any
-  }
-
-  get workflows () {
-    this.#wasLoaded()
-    if (typeof this.#workflows === 'undefined') return []
-    return this.#workflows.map(workflow => ({
-      name: workflow.name,
-      id:   workflow.id,
-    }))
-  }
-
+  /* #region  GENERAL METHODS */
   /**
    * Retrieves the version replacing '.' to '_'
    * @param version The version to be converted to snake_case
@@ -347,6 +348,20 @@ class PAFloC implements PAFloCInterface {
   #snake (version: string) {
     return version.replaceAll('.', '_')
   }
+  /* #endregion */
+
+  /* #region CLASS PROPERTIES */
+  #file: FileInput
+  #zip: JSZip
+  name: string
+  version: string
+  data: Base64
+  #workflows: PrivateWorkflowT[]
+  #customisations: Xml
+  #customisationsData: CustomisationsXml
+  #solution: Xml
+  #solutionData: SolutionXml
+  /* #endregion */
 }
 
 const pafloc = new PAFloC()

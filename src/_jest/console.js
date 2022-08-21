@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 console.log = jest.fn()
 console.debug = jest.fn()
 console.info = jest.fn()

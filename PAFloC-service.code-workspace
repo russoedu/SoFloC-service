@@ -23,20 +23,14 @@
       ".eslintrc.js": true,
       ".npmignore": true,
       "jest.config.js": true,
-      "lib": true,
       "LICENSE": true,
-      "coverage": true
+      "coverage": true,
+      // "lib": true
     },
     "typescript.tsdk": ".\\\\node_modules\\\\typescript\\\\lib"
   },
   "launch": {
     "configurations": [
-      {
-        "name": "Start",
-        "command": "npm run buildAndStart",
-        "request": "launch",
-        "type": "node-terminal"
-      },
       {
         "name": "Build",
         "command": "npm run build",
@@ -46,6 +40,12 @@
       {
         "name": "Test",
         "command": "npm test",
+        "request": "launch",
+        "type": "node-terminal"
+      },
+      {
+        "name": "Update",
+        "command": "npm run update",
         "request": "launch",
         "type": "node-terminal"
       }
