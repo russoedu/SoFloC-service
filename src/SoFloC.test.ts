@@ -3,13 +3,13 @@ import { readFileSync } from 'fs'
 import JSZip, { loadAsync } from 'jszip'
 import { join } from 'path'
 import { SoFloC } from './SoFloC'
-import expectedZip from './_jest/expectedZip'
 import expectedData from './_jest/expectedData.json'
+import expectedZip from './_jest/expectedZip'
 const crypto = require('crypto')
 
 jest.setTimeout(10 * 60 * 1000)
 
-describe('pafloc', () => {
+describe('SoFloC', () => {
   let file: Buffer
   const name = 'TestSolution_2_0_0_0.zip'
   const path = join(__dirname, '_jest', name)
@@ -42,7 +42,7 @@ describe('pafloc', () => {
             const data = await file.async('string')
 
             const expectedData = readFileSync(join(__dirname, '_jest', 'unziped', key)).toString()
-            expect(data).toBe(expectedData)
+            expect(cleanLineBreak(data)).toEqual(cleanLineBreak(expectedData))
           }
         }
       }
@@ -220,4 +220,8 @@ async function zipBack (zip: JSZip) {
       level: 9,
     },
   })
+}
+
+function cleanLineBreak (content: string) {
+  return content.replace(/\r\n/gm, '\n')
 }
