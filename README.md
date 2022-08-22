@@ -15,27 +15,27 @@ Service to copy a Power Automate Flow from an exported solution
 ```
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { pafloc } from './pafloc'
+import { SoFloC } from './SoFloC'
 
 async function main () {
   const name = 'TestSolution_2_0_0_0.zip'
   const path = join(__dirname, '_jest', name)
   const file = readFileSync(path)
 
-  await pafloc.load(file, name)
+  const soFloC = new SoFloC(file, name)
 
-  console.log(`Current Solution version is: ${pafloc.version}`)
+  console.log(`Current Solution version is: ${soFloC.version}`)
 
   console.log(`Please select what Flow you want to clone:
-  - ${pafloc.workflows.map(wf => wf.name).join('\n  - ')}`)
+  - ${soFloC.workflows.map(wf => wf.name).join('\n  - ')}`)
 
-  await pafloc.updateVersion('2.0.0.1')
-  await pafloc.copyFlow('f4910f26-8210-ec11-b6e6-002248842287', 'First Copy Flow')
-  await pafloc.copyFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', 'Second Copy Flow')
-  await pafloc.copyFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', 'Third Copy Flow')
+  await soFloC.updateVersion('2.0.0.1')
+  await soFloC.copyFlow('f4910f26-8210-ec11-b6e6-002248842287', 'First Copy Flow')
+  await soFloC.copyFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', 'Second Copy Flow')
+  await soFloC.copyFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', 'Third Copy Flow')
 
-  const newPath = join(__dirname, pafloc.name)
-  writeFileSync(newPath, pafloc.data, 'base64')
+  const newPath = join(__dirname, soFloC.name)
+  writeFileSync(newPath, soFloC.data, 'base64')
   console.log('done')
 }
 main()

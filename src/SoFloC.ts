@@ -5,30 +5,10 @@ import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
 import { Base64, FileInput, FlowCopyT, PAFloCInterface, PrivateWorkflowT, WorkflowT, Xml } from './types'
 
-class PAFloC implements PAFloCInterface {
-  /**
-   * Loads a ***Solution*** zip file and make it ready to copy flows and update the version.
-   * @param file The ***Solution*** zip file (base64, string, text, binarystring, array, uint8array, arraybuffer, blob or stream)
-   * @param name The file name
-   */
-  async load (file: FileInput, name: string) {
-    this.#cleanUp()
+export class SoFloC implements PAFloCInterface {
+  constructor (file: FileInput, name: string) {
+    this.#wasLoaded = false
     this.#file = file
-
-    this.#zip = await this.#unzip(file)
-
-    const [customisations, customisationsData] = await this.#getCustomisations(this.#zip)
-    this.#customisations = customisations
-    this.#customisationsData = customisationsData
-
-    const [solution, solutionData] = await this.#getSolution(this.#zip)
-    this.#solution = solution
-    this.#solutionData = solutionData
-
-    this.version = this.#getCurrentVersion(this.#solutionData)
-    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
-    this.data = await this.#getData(this.#zip)
-
     this.name = name
   }
 
@@ -36,22 +16,33 @@ class PAFloC implements PAFloCInterface {
    * Copies a flow in the ***Solution***.
    * @param flowGuid The GUID of the flow to be copied
    * @param newFlowName The name of the copy
+   * @param newVersion The new ***Solution*** version
    */
-  async copyFlow (flowGuid: string, newFlowName: string) {
-    this.#wasLoaded()
-    this.#worflowExists(flowGuid)
+  async copyFlow (flowGuid: string, newFlowName: string, newVersion?: string) {
+    await this.#load()
+    try {
+      this.#worflowExists(flowGuid)
 
-    const copyData = this.#getCopyData(newFlowName)
+      if (newVersion) await this.updateVersion(newVersion)
 
-    const [customisations, customisationsData] = this.#getUpdatedCustomisations(flowGuid, copyData)
-    this.#customisations = customisations
-    this.#customisationsData = customisationsData
+      const copyData = this.#getCopyData(newFlowName)
 
-    const [solution, solutionData] = this.#getUpdateSolution(flowGuid, copyData)
-    this.#solution = solution
-    this.#solutionData = solutionData
+      const [customisations, customisationsData] = this.#getUpdatedCustomisations(flowGuid, copyData)
+      this.#customisations = customisations
+      this.#customisationsData = customisationsData
 
-    await this.#copyFile(flowGuid, copyData)
+      const [solution, solutionData] = this.#getUpdateSolution(flowGuid, copyData)
+      this.#solution = solution
+      this.#solutionData = solutionData
+
+      await this.#copyFile(flowGuid, copyData)
+    } catch (error) {
+      if (typeof error === 'string') {
+        throw new Error(error)
+      }
+      /* istanbul ignore next */
+      throw error
+    }
   }
 
   /**
@@ -59,19 +50,26 @@ class PAFloC implements PAFloCInterface {
    * @param newVersion The new ***Solution*** version
    */
   async updateVersion (newVersion: string) {
-    this.#wasLoaded()
-    this.#validateVersion(newVersion)
+    await this.#load()
+    try {
+      this.#validateVersion(newVersion)
 
-    this.name = this.name
-      .replace(this.#snake(this.version), this.#snake(newVersion))
-    this.#solution = this.#solution
-      .replace(`<Version>${this.version}</Version>`, `<Version>${newVersion}</Version>`)
-    this.version = newVersion
+      this.name = this.name
+        .replace(this.#snake(this.version), this.#snake(newVersion))
+      this.#solution = this.#solution
+        .replace(`<Version>${this.version}</Version>`, `<Version>${newVersion}</Version>`)
+      this.version = newVersion
+    } catch (error) {
+      if (typeof error === 'string') {
+        throw new Error(error)
+      }
+      /* istanbul ignore next */
+      throw error
+    }
   }
 
   get workflows () {
-    this.#wasLoaded()
-    if (typeof this.#workflows === 'undefined') return []
+    if (!this.#wasLoaded) return []
     return this.#workflows.map(workflow => ({
       name: workflow.name,
       id:   workflow.id,
@@ -80,21 +78,39 @@ class PAFloC implements PAFloCInterface {
 
   /* #region LOAD METHODS */
   /**
-   * Resets the loaded data
+   * Loads a ***Solution*** zip file and make it ready to copy flows and update the version. Sets #wasLoaded to true
    */
-  #cleanUp () {
-    this.#file = undefined as any
-    this.#zip = undefined as any
-    this.#customisations = undefined as any
-    this.#customisationsData = undefined as any
-    this.#solution = undefined as any
-    this.#solutionData = undefined as any
-    this.version = undefined as any
-    this.#workflows = undefined as any
-    this.data = undefined as any
-    this.name = undefined as any
+  async #load () {
+    if (!this.#wasLoaded) {
+      try {
+        this.#zip = await this.#unzip(this.#file)
+
+        const [customisations, customisationsData] = await this.#getCustomisations(this.#zip)
+        this.#customisations = customisations
+        this.#customisationsData = customisationsData
+
+        const [solution, solutionData] = await this.#getSolution(this.#zip)
+        this.#solution = solution
+        this.#solutionData = solutionData
+
+        this.version = this.#getCurrentVersion(this.#solutionData)
+        this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
+        this.data = await this.#getData(this.#zip)
+
+        this.#wasLoaded = true
+      } catch (error) {
+        if (typeof error === 'string') {
+          throw new Error(error)
+        }
+        /* istanbul ignore next */
+        throw error
+      }
+    }
   }
 
+  /**
+   * Resets the loaded data
+   */
   /**
    * Retrieves the ***Solution*** zip content
    * @param file The ***Solution*** zip file (base64, string, text, binarystring, array, uint8array, arraybuffer, blob or stream)
@@ -107,7 +123,7 @@ class PAFloC implements PAFloCInterface {
       return await JSZip.loadAsync(file, options)
     } catch (error) {
       console.log(error)
-      throw new Error('Failed to unzip the file')
+      throw 'Failed to unzip the file'
     }
   }
 
@@ -144,7 +160,7 @@ class PAFloC implements PAFloCInterface {
       ]
     } catch (error) {
       console.log(error)
-      throw new Error(`'${xmlName}.xml' was not found in the Solution zip`)
+      throw `'${xmlName}.xml' was not found in the Solution zip`
     }
   }
 
@@ -157,7 +173,7 @@ class PAFloC implements PAFloCInterface {
       return solution.ImportExportXml.SolutionManifest.Version._text
     } catch (error) {
       console.log(error)
-      throw new Error('Failed to retrieve the version')
+      throw 'Failed to retrieve the version'
     }
   }
 
@@ -204,18 +220,10 @@ class PAFloC implements PAFloCInterface {
 
   /* #region COPY FLOW METHODS */
   /**
-   * Verifies if a ***Solution*** was loaded
-   */
-  #wasLoaded () {
-    const undef = typeof this.#file === 'undefined'
-    if (undef) throw new Error('Solution was not loaded')
-  }
-
-  /**
    * Verifies if a specified workflow exists in the ***Solution***
    */
   #worflowExists (flowGuid: string) {
-    if (this.#workflows.findIndex(wf => wf.id === flowGuid) < 0) throw new Error(`Workflow file with GUID '${flowGuid}' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'`)
+    if (this.#workflows.findIndex(wf => wf.id === flowGuid) < 0) throw `Workflow file with GUID '${flowGuid}' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'`
   }
 
   /**
@@ -314,7 +322,7 @@ class PAFloC implements PAFloCInterface {
   #validateVersion (newVersion: string) {
     const validRegEx = /^((\d+\.)+\d+)$/
     if (!validRegEx.exec(newVersion)) {
-      throw new Error(`Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<build>.<revision>.`)
+      throw `Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<build>.<revision>.`
     }
 
     const currentVersionValues = this.version.split('.').map(value => Number(value))
@@ -335,7 +343,7 @@ class PAFloC implements PAFloCInterface {
       newValueString += '0'.repeat(maxLength - newValueLength) + String(newValue)
     }
 
-    if (Number(newValueString) <= Number(currentValueString)) throw new Error(`Version '${newVersion}' is smaller than '${this.version}'`)
+    if (Number(newValueString) <= Number(currentValueString)) throw `Version '${newVersion}' is smaller than '${this.version}'`
   }
   /* #endregion */
 
@@ -361,8 +369,6 @@ class PAFloC implements PAFloCInterface {
   #customisationsData: CustomisationsXml
   #solution: Xml
   #solutionData: SolutionXml
+  #wasLoaded = false
   /* #endregion */
 }
-
-const pafloc = new PAFloC()
-export { pafloc }

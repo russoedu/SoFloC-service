@@ -14,11 +14,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/russoedu/PowerAutomateFlowCopyService.git"
+    "url": "git+https://github.com/russoedu/SoFloc-service.git"
   },
-  "homepage": "https://github.com/russoedu/PowerAutomateFlowCopyService#readme",
+  "homepage": "https://github.com/russoedu/SoFloc-service#readme",
   "bugs": {
-    "url": "https://github.com/russoedu/PowerAutomateFlowCopyService/issues"
+    "url": "https://github.com/russoedu/SoFloc-service/issues"
   },
   "keywords": [
     "power automate",
@@ -27,7 +27,7 @@
     "power platform",
     "copy"
   ],
-  "main": "lib/pafloc.js",
+  "main": "lib/SoFloc.js",
   "directories": {
     "lib": "lib"
   },
@@ -51,7 +51,6 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "camelcase": "^7.0.0",
     "jszip": "^3.10.0",
     "xml-js": "^1.6.11"
   }

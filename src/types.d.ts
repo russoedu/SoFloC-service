@@ -62,5 +62,6 @@ export interface PAFloCInterface {
   #workflows: PrivateWorkflowT[]
   #customisations: Xml
   #solution: Xml
+  #loaded: boolean
 
 }
