@@ -4,7 +4,7 @@
   "description": "Service to copy the flow inside a solution package",
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
+    "prepare": "tsc -p tsconfig-publish.json",
     "prepublishOnly": "npm test",
     "test": "jest",
     "check": "npx npm-check --location=local",
