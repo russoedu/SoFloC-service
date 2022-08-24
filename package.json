@@ -1,7 +1,7 @@
 {
-  "name": "power-automate-flow-copy-service",
+  "name": "sofloc",
   "version": "1.0.0",
-  "description": "Service to copy the flow inside a solution package",
+  "description": "Service to copy a Power Automate Flow from a Solution",
   "scripts": {
     "build": "tsc",
     "prepare": "tsc -p tsconfig-publish.json",
@@ -25,7 +25,9 @@
     "solutions",
     "flow",
     "power platform",
-    "copy"
+    "copy",
+    "flow copy",
+    "power automate copy"
   ],
   "main": "lib/SoFloc.js",
   "directories": {

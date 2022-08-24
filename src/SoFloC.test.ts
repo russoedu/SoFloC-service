@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
+/** global: jest */
 import { readFileSync } from 'fs'
 import JSZip, { loadAsync } from 'jszip'
 import { join } from 'path'
