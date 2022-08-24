@@ -1,4 +1,7 @@
 # PowerAutomateFlowCopyService
+
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/d6f71e7bff474bbaa3e5f44db2cd44c5)](https://app.codacy.com/gh/russoedu/SoFloC-service?utm_source=github.com&utm_medium=referral&utm_content=russoedu/SoFloC-service&utm_campaign=Badge_Grade_Settings)
+
 Service to copy a Power Automate Flow from an exported solution
 
 # Example
