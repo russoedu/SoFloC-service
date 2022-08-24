@@ -1,6 +1,6 @@
 ![SoFloC logo](https://raw.githubusercontent.com/russoedu/SoFloC/master/src/assets/sofloc-logo.svg)
 
-**SoFloC** is a service to copy a Power Automate Flow from a Power Platform ***Solution***.
+**SoFloC** is a service to copy a Power Automate Flows from a Power Platform ***Solution***.
 
 [![npm](https://img.shields.io/npm/v/sofloc.svg)](https://www.npmjs.com/package/sofloc)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/russoedu/SoFloC-service/badges/quality-score.png?b=main)](https://scrutinizer-ci.com/g/russoedu/SoFloC-service/?branch=main)
