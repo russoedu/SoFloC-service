@@ -6,10 +6,46 @@ import { SolutionXml } from './solution'
 import { Base64, FileInput, FlowCopyT, PAFloCInterface, PrivateWorkflowT, WorkflowT, Xml } from './types'
 
 export class SoFloC implements PAFloCInterface {
+  /**
+   * Creates a new SoFloC instance. To be able to use it you need to run `await soFloC.load()`
+   * @param file The file data to be open
+   * @param name The name of the file
+   */
   constructor (file: FileInput, name: string) {
     this.#wasLoaded = false
     this.#file = file
     this.name = name
+  }
+
+  /**
+   * Loads a ***Solution*** zip file and make it ready to get the existing flows and the version, copy flows and update the version. Sets #wasLoaded to true
+   */
+  async load () {
+    if (!this.#wasLoaded) {
+      try {
+        this.#zip = await this.#unzip(this.#file)
+
+        const [customisations, customisationsData] = await this.#getCustomisations(this.#zip)
+        this.#customisations = customisations
+        this.#customisationsData = customisationsData
+
+        const [solution, solutionData] = await this.#getSolution(this.#zip)
+        this.#solution = solution
+        this.#solutionData = solutionData
+
+        this.version = this.#getCurrentVersion(this.#solutionData)
+        this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
+        this.data = await this.#getData(this.#zip)
+
+        this.#wasLoaded = true
+      } catch (error) {
+        if (typeof error === 'string') {
+          throw new Error(error)
+        }
+        /* istanbul ignore next */
+        throw error
+      }
+    }
   }
 
   /**
@@ -19,7 +55,7 @@ export class SoFloC implements PAFloCInterface {
    * @param newVersion The new ***Solution*** version
    */
   async copyFlow (flowGuid: string, newFlowName: string, newVersion?: string) {
-    await this.#load()
+    await this.load()
     try {
       this.#worflowExists(flowGuid)
 
@@ -50,7 +86,7 @@ export class SoFloC implements PAFloCInterface {
    * @param newVersion The new ***Solution*** version
    */
   async updateVersion (newVersion: string) {
-    await this.#load()
+    await this.load()
     try {
       this.#validateVersion(newVersion)
 
@@ -68,6 +104,9 @@ export class SoFloC implements PAFloCInterface {
     }
   }
 
+  /**
+   * The list of workflows in the solution. To be able to get the list you need to run `await soFloC.load()` first.
+   */
   get workflows () {
     if (!this.#wasLoaded) return []
     return this.#workflows.map(workflow => ({
@@ -77,37 +116,6 @@ export class SoFloC implements PAFloCInterface {
   }
 
   /* #region LOAD METHODS */
-  /**
-   * Loads a ***Solution*** zip file and make it ready to copy flows and update the version. Sets #wasLoaded to true
-   */
-  async #load () {
-    if (!this.#wasLoaded) {
-      try {
-        this.#zip = await this.#unzip(this.#file)
-
-        const [customisations, customisationsData] = await this.#getCustomisations(this.#zip)
-        this.#customisations = customisations
-        this.#customisationsData = customisationsData
-
-        const [solution, solutionData] = await this.#getSolution(this.#zip)
-        this.#solution = solution
-        this.#solutionData = solutionData
-
-        this.version = this.#getCurrentVersion(this.#solutionData)
-        this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
-        this.data = await this.#getData(this.#zip)
-
-        this.#wasLoaded = true
-      } catch (error) {
-        if (typeof error === 'string') {
-          throw new Error(error)
-        }
-        /* istanbul ignore next */
-        throw error
-      }
-    }
-  }
-
   /**
    * Resets the loaded data
    */
@@ -361,8 +369,17 @@ export class SoFloC implements PAFloCInterface {
   /* #region CLASS PROPERTIES */
   #file: FileInput
   #zip: JSZip
+  /**
+   * The ***Solution*** file name. It is update as a new version is set
+   */
   name: string
+  /**
+   * The ***Solution*** version. It is update as a new version is set
+   */
   version: string
+  /**
+   * The ***Solution*** data as Base64. It is updated as new copies are added.
+   */
   data: Base64
   #workflows: PrivateWorkflowT[]
   #customisations: Xml

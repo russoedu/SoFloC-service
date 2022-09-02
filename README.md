@@ -26,7 +26,7 @@ You can use this NPM package directly or, even better, use the [**SoFloC** deskt
 ```
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { SoFloC } from './SoFloC'
+import { SoFloC } from 'SoFloC'
 
 async function main () {
   const name = 'TestSolution_2_0_0_0.zip'
@@ -34,6 +34,8 @@ async function main () {
   const file = readFileSync(path)
 
   const soFloC = new SoFloC(file, name)
+
+  await soFloC.load()
 
   console.log(`Current Solution version is: ${soFloC.version}`)
 
