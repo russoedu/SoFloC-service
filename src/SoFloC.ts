@@ -5,6 +5,8 @@ import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
 import { Base64, FileInput, FlowCopyT, PAFloCInterface, PrivateWorkflowT, WorkflowT, Xml } from './types'
 
+export * from './types'
+
 export class SoFloC implements PAFloCInterface {
   /**
    * Creates a new SoFloC instance. To be able to use it you need to run `await soFloC.load()`
