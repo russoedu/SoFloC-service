@@ -3,11 +3,11 @@ import JSZip from 'jszip'
 import { xml2js } from 'xml-js'
 import { CustomisationsXml } from './customisations'
 import { SolutionXml } from './solution'
-import { Base64, FileInput, FlowCopyT, PAFloCInterface, PrivateWorkflowT, WorkflowT, Xml } from './types'
+import { Base64, FileInput, FlowCopyT, PrivateWorkflowT, WorkflowT, Xml } from './types'
 
 export * from './types'
 
-export class SoFloC implements PAFloCInterface {
+export class SoFloC {
   /**
    * Creates a new SoFloC instance. To be able to use it you need to run `await soFloC.load()`
    * @param file The file data to be open
