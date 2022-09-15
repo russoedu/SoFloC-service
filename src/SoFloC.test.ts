@@ -4,8 +4,9 @@ import { readFileSync } from 'fs'
 import JSZip, { loadAsync } from 'jszip'
 import { join } from 'path'
 import { SoFloC } from './SoFloC'
-import expectedData from './_jest/expectedData.json'
-import expectedZip from './_jest/expectedZip'
+import expectedDataCopy from './_jest/expectedDataCopy.json'
+import expectedZipCopy from './_jest/expectedZipCopy'
+import expectedZipDelete from './_jest/expectedZipDelete'
 const crypto = require('crypto')
 
 jest.setTimeout(10 * 60 * 1000)
@@ -31,7 +32,7 @@ describe('SoFloC', () => {
       await sofloc.copyFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', 'Third Copy Flow')
 
       const zip = await loadAsync(sofloc.data, { base64: true })
-      expect(zip.files).toMatchObject(expectedZip)
+      expect(zip.files).toMatchObject(expectedZipCopy)
 
       expect(sofloc.name).toEqual('TestSolution_2_1_0_0.zip')
       expect(sofloc.version).toEqual('2.1.0.0')
@@ -42,7 +43,7 @@ describe('SoFloC', () => {
             const file = zip.files[key]
             const data = await file.async('string')
 
-            const expectedData = readFileSync(join(__dirname, '_jest', 'unziped', key)).toString()
+            const expectedData = readFileSync(join(__dirname, '_jest', 'unzipedCopy', key)).toString()
             expect(cleanLineBreak(data)).toEqual(cleanLineBreak(expectedData))
           }
         }
@@ -120,6 +121,97 @@ describe('SoFloC', () => {
       expect(err.message).toBe("Workflow file with GUID '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'")
     })
   })
+  describe('deleteFlow', () => {
+    test('happy path', async () => {
+      const sofloc = new SoFloC(file, name)
+      await sofloc.deleteFlow('f4910f26-8210-ec11-b6e6-002248842287')
+
+      const zip = await loadAsync(sofloc.data, { base64: true })
+      expect(zip.files).toMatchObject(expectedZipDelete)
+
+      expect(sofloc.name).toEqual('TestSolution_2_0_0_0.zip')
+      expect(sofloc.version).toEqual('2.0.0.0')
+
+      for (const key in zip.files) {
+        if (Object.prototype.hasOwnProperty.call(zip.files, key)) {
+          if (key !== 'Workflows/') {
+            const file = zip.files[key]
+            const data = await file.async('string')
+
+            const expectedData = readFileSync(join(__dirname, '_jest', 'unzipedDelete', key)).toString()
+            expect(cleanLineBreak(data)).toEqual(cleanLineBreak(expectedData))
+          }
+        }
+      }
+
+      expect(sofloc.workflows).toEqual([
+        { id: '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', name: 'First Test Flow' },
+      ])
+    })
+    test('failed to load', async () => {
+      const sofloc = new SoFloC(null as any, null as any)
+      let err: any
+
+      try {
+        await sofloc.deleteFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2')
+      } catch (error) {
+        err = error
+      }
+      expect(err.message).toBe('Failed to unzip the file')
+    })
+    test('Workflow not on the solution', async () => {
+      const zip = await loadAsync(file, { base64: true })
+      delete zip.files['Workflows/FirstTestFlow-0F48CBA9-EF0C-ED11-82E4-000D3A64F6F2.json']
+
+      const data = await zipBack(zip)
+
+      const sofloc = new SoFloC(data, name)
+
+      let err: any
+      try {
+        await sofloc.deleteFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2')
+      } catch (error) {
+        err = error
+      }
+      expect(err.message).toBe("Workflow file with GUID '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'")
+    })
+    test('GUID not found on solution.xml', async () => {
+      const zip = await loadAsync(file, { base64: true })
+      let solution = await zip.files['solution.xml'].async('string')
+      solution = solution.replace('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', '000000000-aaaa-bbbb-cccc-000000000000')
+      zip.file('solution.xml', solution)
+
+      const data = await zipBack(zip)
+
+      const sofloc = new SoFloC(data, name)
+
+      let err: any
+      try {
+        await sofloc.deleteFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2')
+      } catch (error) {
+        err = error
+      }
+      expect(err.message).toBe("Workflow file with GUID '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'")
+    })
+    test('GUID not found on customizations.xml', async () => {
+      const zip = await loadAsync(file, { base64: true })
+      let customisations = await zip.files['customizations.xml'].async('string')
+      customisations = customisations.replace('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', '000000000-aaaa-bbbb-cccc-000000000000')
+      zip.file('customizations.xml', customisations)
+
+      const data = await zipBack(zip)
+
+      const sofloc = new SoFloC(data, name)
+
+      let err: any
+      try {
+        await sofloc.deleteFlow('0f48cba9-ef0c-ed11-82e4-000d3a64f6f2')
+      } catch (error) {
+        err = error
+      }
+      expect(err.message).toBe("Workflow file with GUID '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'")
+    })
+  })
   describe('updateVersion', () => {
     test('invalid version', async () => {
       const sofloc = new SoFloC(file, name)
@@ -157,7 +249,7 @@ describe('SoFloC', () => {
       const sofloc = new SoFloC(file, name)
       await sofloc.updateVersion('2.1.0.0')
 
-      expect(sofloc).toEqual(expectedData)
+      expect(sofloc).toEqual(expectedDataCopy)
       expect(sofloc.workflows).toEqual([
         { id: '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', name: 'First Test Flow' },
         { id: 'f4910f26-8210-ec11-b6e6-002248842287', name: 'Second Test Flow' },

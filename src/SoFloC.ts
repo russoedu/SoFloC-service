@@ -65,15 +65,42 @@ export class SoFloC {
 
       const copyData = this.#getCopyData(newFlowName)
 
-      const [customisations, customisationsData] = this.#getUpdatedCustomisations(flowGuid, copyData)
+      const [customisations, customisationsData] = this.#copyOnCustomisations(flowGuid, copyData)
       this.#customisations = customisations
       this.#customisationsData = customisationsData
 
-      const [solution, solutionData] = this.#getUpdateSolution(flowGuid, copyData)
+      const [solution, solutionData] = this.#copyOnSolution(flowGuid, copyData)
       this.#solution = solution
       this.#solutionData = solutionData
 
       await this.#copyFile(flowGuid, copyData)
+    } catch (error) {
+      if (typeof error === 'string') {
+        throw new Error(error)
+      }
+      /* istanbul ignore next */
+      throw error
+    }
+  }
+
+  /**
+   * Deletes a flow in the ***Solution***.
+   * @param flowGuid The GUID of the flow to be copied
+   */
+  async deleteFlow (flowGuid: string) {
+    await this.load()
+    try {
+      this.#worflowExists(flowGuid)
+
+      const [customisations, customisationsData] = this.#deleteOnCustomisations(flowGuid)
+      this.#customisations = customisations
+      this.#customisationsData = customisationsData
+
+      const [solution, solutionData] = this.#deleteOnSolution(flowGuid)
+      this.#solution = solution
+      this.#solutionData = solutionData
+
+      await this.#deleteFile(flowGuid)
     } catch (error) {
       if (typeof error === 'string') {
         throw new Error(error)
@@ -196,10 +223,16 @@ export class SoFloC {
   #getWorkflows (customisations: CustomisationsXml, solution: SolutionXml, zip: JSZip) {
     const workflowFiles = Object.entries(zip.files).filter(([name]) => name.match(/Workflows\/.+\.json/)).map(file => file[1])
 
-    const workflows = customisations.ImportExportXml.Workflows.Workflow
+    const wfs = Array.isArray(customisations.ImportExportXml.Workflows.Workflow)
+      ? customisations.ImportExportXml.Workflows.Workflow
+      : [customisations.ImportExportXml.Workflows.Workflow]
+    const workflows = wfs
       .map(workflow => {
         const id = workflow._attributes.WorkflowId.replace(/{|}/g, '')
-        const isOnSolution = solution.ImportExportXml.SolutionManifest.RootComponents.RootComponent.findIndex(wf => wf._attributes.id.includes(id)) >= 0
+        const rcs = Array.isArray(solution.ImportExportXml.SolutionManifest.RootComponents.RootComponent)
+          ? solution.ImportExportXml.SolutionManifest.RootComponents.RootComponent
+          : [solution.ImportExportXml.SolutionManifest.RootComponents.RootComponent]
+        const isOnSolution = rcs.findIndex(wf => wf._attributes.id.includes(id)) >= 0
         const file = workflowFiles.find(workflowFile => workflowFile.name.includes(id.toUpperCase())) as JSZip.JSZipObject
         return !!file && !!id && isOnSolution
           ? {
@@ -230,13 +263,6 @@ export class SoFloC {
 
   /* #region COPY FLOW METHODS */
   /**
-   * Verifies if a specified workflow exists in the ***Solution***
-   */
-  #worflowExists (flowGuid: string) {
-    if (this.#workflows.findIndex(wf => wf.id === flowGuid) < 0) throw `Workflow file with GUID '${flowGuid}' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'`
-  }
-
-  /**
    * Retrieves an object containing the information of the flow copy
    * @param newFlowName The name of the flow copy
    * @returns The flow copy data
@@ -255,54 +281,56 @@ export class SoFloC {
   }
 
   /**
-   * Copies the flow inside solution.xml
-   * @param flowGuid The GUID of the original flow to be copied
-   * @param copyData The data of the flow copy
-   */
-  #getUpdateSolution (flowGuid: string, copyData: FlowCopyT): [Xml, SolutionXml] {
-    const rootComponent = `<RootComponent type="29" id="{${flowGuid}}" behavior="0" />`
-    const rootRegEx = new RegExp(`\r?\n?.+?${rootComponent}`, 'gm')
-
-    const part = this.#solution.match(rootRegEx)?.[0] as string
-
-    const copy = part
-      .replace(flowGuid, copyData.guid)
-
-    const solution = this.#solution
-      .replace(part, `${part}${copy}`)
-    const data = xml2js(solution, { compact: true }) as SolutionXml
-
-    return [
-      solution,
-      data,
-    ]
-  }
-
-  /**
    * Copies the flow inside the customizations.xml
    * @param flowGuid The GUID of the original flow to be copied
    * @param copyData The data of the flow copy
+   * @returns The customisations.xml data
    */
-  #getUpdatedCustomisations (flowGuid: string, copyData: FlowCopyT): [Xml, CustomisationsXml] {
-    const customisationsComponent = `<Workflow WorkflowId="{${flowGuid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
-    const customisationsWfRegEx = new RegExp(`\r?\n?.+?${customisationsComponent}`, 'gm')
+  #copyOnCustomisations (flowGuid: string, copyData: FlowCopyT): [Xml, CustomisationsXml] {
+    const workflowComponent = `<Workflow WorkflowId="{${flowGuid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
+    const workflowRegEx = new RegExp(`\r?\n?.+?${workflowComponent}`, 'gm')
 
-    const part = this.#customisations.match(customisationsWfRegEx)?.[0] as string
+    const workflow = this.#customisations.match(workflowRegEx)?.[0] as string
 
     const jsonFileNameRegEx = /<JsonFileName>(.|\r|\n)+?<\/JsonFileName>/gi
     const introducedVersionRegEx = /<IntroducedVersion>(.|\r|\n)+?<\/IntroducedVersion>/gi
 
-    const copy = part
+    const copy = workflow
       .replace(flowGuid, copyData.guid)
       .replace(/Name=".+?"/, `Name="${copyData.name}"`)
       .replace(jsonFileNameRegEx, `<JsonFileName>/${copyData.fileName}</JsonFileName>`)
       .replace(introducedVersionRegEx, `<IntroducedVersion>${this.version}</IntroducedVersion>`)
 
-    const customisations = this.#customisations.replace(part, `${part}${copy}`)
+    const customisations = this.#customisations.replace(workflow, `${workflow}${copy}`)
     const data = xml2js(customisations, { compact: true }) as CustomisationsXml
 
     return [
       customisations,
+      data,
+    ]
+  }
+
+  /**
+   * Copies the flow inside solution.xml
+   * @param flowGuid The GUID of the original flow to be copied
+   * @param copyData The data of the flow copy
+   * @returns The solution.xml data
+   */
+  #copyOnSolution (flowGuid: string, copyData: FlowCopyT): [Xml, SolutionXml] {
+    const rootComponent = `<RootComponent type="29" id="{${flowGuid}}" behavior="0" />`
+    const rootRegEx = new RegExp(`\r?\n?.+?${rootComponent}`, 'gm')
+
+    const root = this.#solution.match(rootRegEx)?.[0] as string
+
+    const copy = root
+      .replace(flowGuid, copyData.guid)
+
+    const solution = this.#solution
+      .replace(root, `${root}${copy}`)
+    const data = xml2js(solution, { compact: true }) as SolutionXml
+
+    return [
+      solution,
       data,
     ]
   }
@@ -316,6 +344,63 @@ export class SoFloC {
     const fileToCopy = this.#workflows.find(wf => wf.id === flowGuid.toLowerCase()) as PrivateWorkflowT
 
     this.#zip.file(copyData.fileName, await fileToCopy.file.async('string'))
+    this.#zip.file('solution.xml', this.#solution)
+    this.#zip.file('customizations.xml', this.#customisations)
+
+    this.data = await this.#getData(this.#zip)
+    this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
+  }
+  /* #endregion */
+
+  /* #region DEPLETE FLOW METHODS */
+  /**
+   * Deletes the flow inside the customizations.xml
+   * @param flowGuid The GUID of the flow to be deleted
+   * @returns The customisations.xml data
+   */
+  #deleteOnCustomisations (flowGuid: string): [Xml, CustomisationsXml] {
+    const workflowComponent = `<Workflow WorkflowId="{${flowGuid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
+    const workflowRegEx = new RegExp(`\r?\n?.+?${workflowComponent}`, 'gm')
+
+    const workflow = this.#customisations.match(workflowRegEx)?.[0] as string
+
+    const customisations = this.#customisations.replace(workflow, '')
+    const data = xml2js(customisations, { compact: true }) as CustomisationsXml
+
+    return [
+      customisations,
+      data,
+    ]
+  }
+
+  /**
+   * Deletes the flow inside solution.xml
+   * @param flowGuid The GUID of the flow to be deleted
+   * @returns The solution.xml data
+   */
+  #deleteOnSolution (flowGuid: string): [Xml, SolutionXml] {
+    const rootComponent = `<RootComponent type="29" id="{${flowGuid}}" behavior="0" />`
+    const rootRegEx = new RegExp(`\r?\n?.+?${rootComponent}`, 'gm')
+
+    const root = this.#solution.match(rootRegEx)?.[0] as string
+
+    const solution = this.#solution.replace(root, '')
+    const data = xml2js(solution, { compact: true }) as SolutionXml
+
+    return [
+      solution,
+      data,
+    ]
+  }
+
+  /**
+   * Deletes the flow inside the ***Solution*** zip and updates data and #workflows properties
+   * @param flowGuid The GUID of the flow to be deleted
+   */
+  async #deleteFile (flowGuid: string) {
+    const fileToDelete = this.#workflows.find(wf => wf.id === flowGuid.toLowerCase()) as PrivateWorkflowT
+
+    this.#zip.remove(fileToDelete.file.name)
     this.#zip.file('solution.xml', this.#solution)
     this.#zip.file('customizations.xml', this.#customisations)
 
@@ -359,6 +444,13 @@ export class SoFloC {
 
   /* #region  GENERAL METHODS */
   /**
+   * Verifies if a specified workflow exists in the ***Solution***
+   */
+  #worflowExists (flowGuid: string) {
+    if (this.#workflows.findIndex(wf => wf.id === flowGuid) < 0) throw `Workflow file with GUID '${flowGuid}' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'`
+  }
+
+  /**
    * Retrieves the version replacing '.' to '_'
    * @param version The version to be converted to snake_case
    * @returns
@@ -389,5 +481,8 @@ export class SoFloC {
   #solution: Xml
   #solutionData: SolutionXml
   #wasLoaded = false
+
+  // TODO UndoStack
+
   /* #endregion */
 }
