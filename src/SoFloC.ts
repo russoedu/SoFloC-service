@@ -117,7 +117,7 @@ export class SoFloC {
   async updateVersion (newVersion: string) {
     await this.load()
     try {
-      this.#validateVersion(newVersion)
+      this.validateVersion(newVersion)
 
       this.name = this.name
         .replace(this.#snake(this.version), this.#snake(newVersion))
@@ -414,7 +414,7 @@ export class SoFloC {
    * Validates if the new version is valid
    * @param newVersion The new ***Solution*** version
    */
-  #validateVersion (newVersion: string) {
+  validateVersion (newVersion: string) {
     const validRegEx = /^((\d+\.)+\d+)$/
     if (!validRegEx.exec(newVersion)) {
       throw `Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<build>.<revision>.`

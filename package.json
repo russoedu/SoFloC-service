@@ -1,6 +1,6 @@
 {
   "name": "sofloc",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Service to copy a Power Automate Flows from a Solution",
   "scripts": {
     "build": "tsc",

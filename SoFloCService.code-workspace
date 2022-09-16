@@ -46,6 +46,12 @@
         "type": "node-terminal"
       },
       {
+        "name": "Publish",
+        "command": "npm publish",
+        "request": "launch",
+        "type": "node-terminal"
+      },
+      {
         "name": "Update",
         "command": "npm run update",
         "request": "launch",
