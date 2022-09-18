@@ -426,8 +426,8 @@ export class SoFloC {
     let currentValueString = ''
     let newValueString = ''
     for (let i = 0; i < currentVersionValues.length; i++) {
-      const currentValue = currentVersionValues[i]
-      const newValue = newVersionValues[i]
+      const currentValue = currentVersionValues[i] || 0
+      const newValue = newVersionValues[i] || 0
 
       const currentValueLength = String(currentValue).length
       const newValueLength = String(newValue).length

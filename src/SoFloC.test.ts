@@ -235,6 +235,28 @@ describe('SoFloC', () => {
       }
       expect(err.message).toBe('Version \'1.99.99.99\' is smaller than \'2.0.0.0\'')
     })
+    test('smaller version with less chars', async () => {
+      const sofloc = new SoFloC(file, name)
+
+      let err: any
+      try {
+        await sofloc.updateVersion('1.9')
+      } catch (error) {
+        err = error
+      }
+      expect(err.message).toBe('Version \'1.9\' is smaller than \'2.0.0.0\'')
+    })
+    test('bigger version with less chars', async () => {
+      const sofloc = new SoFloC(file, name)
+
+      let err: any
+      try {
+        await sofloc.updateVersion('2.1')
+      } catch (error) {
+        err = error
+      }
+      expect(err).toBeUndefined()
+    })
   })
   describe('get workflows', () => {
     test('not loaded', async () => {
