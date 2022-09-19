@@ -438,7 +438,8 @@ export class SoFloC {
       newValueString += '0'.repeat(maxLength - newValueLength) + String(newValue)
     }
 
-    if (Number(newValueString) <= Number(currentValueString)) throw `Version '${newVersion}' is smaller than '${this.version}'`
+    if (Number(newValueString) < Number(currentValueString) ||
+    (Number(newValueString) === Number(currentValueString) && newVersion !== this.version)) throw `Version '${newVersion}' is smaller than '${this.version}'`
   }
   /* #endregion */
 
