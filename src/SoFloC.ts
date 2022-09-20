@@ -24,31 +24,23 @@ export class SoFloC {
    */
   async load () {
     if (!this.#wasLoaded) {
-      try {
-        this.#zip = await this.#unzip(this.#file)
+      this.#zip = await this.#unzip(this.#file)
 
-        const [customisations, customisationsData] = await this.#getCustomisations(this.#zip)
-        this.#customisations = customisations
-        this.#customisationsData = customisationsData
+      const [customisations, customisationsData] = await this.#getCustomisations(this.#zip)
+      this.#customisations = customisations
+      this.#customisationsData = customisationsData
 
-        const [solution, solutionData] = await this.#getSolution(this.#zip)
-        this.#solution = solution
-        this.#solutionData = solutionData
+      const [solution, solutionData] = await this.#getSolution(this.#zip)
+      this.#solution = solution
+      this.#solutionData = solutionData
 
-        this.version = this.#getCurrentVersion(this.#solutionData)
-        this.originalVersion = this.version
+      this.version = this.#getCurrentVersion(this.#solutionData)
+      this.originalVersion = this.version
 
-        this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
-        this.data = await this.#getData(this.#zip)
+      this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
+      this.data = await this.#getData(this.#zip)
 
-        this.#wasLoaded = true
-      } catch (error) {
-        if (typeof error === 'string') {
-          throw new Error(error)
-        }
-        /* istanbul ignore next */
-        throw error
-      }
+      this.#wasLoaded = true
     }
   }
 
@@ -60,29 +52,21 @@ export class SoFloC {
    */
   async copyFlow (flowGuid: string, newFlowName: string, newVersion?: string) {
     await this.load()
-    try {
-      this.#worflowExists(flowGuid)
+    this.#worflowExists(flowGuid)
 
-      if (newVersion) await this.updateVersion(newVersion)
+    if (newVersion) await this.updateVersion(newVersion)
 
-      const copyData = this.#getCopyData(newFlowName)
+    const copyData = this.#getCopyData(newFlowName)
 
-      const [customisations, customisationsData] = this.#copyOnCustomisations(flowGuid, copyData)
-      this.#customisations = customisations
-      this.#customisationsData = customisationsData
+    const [customisations, customisationsData] = this.#copyOnCustomisations(flowGuid, copyData)
+    this.#customisations = customisations
+    this.#customisationsData = customisationsData
 
-      const [solution, solutionData] = this.#copyOnSolution(flowGuid, copyData)
-      this.#solution = solution
-      this.#solutionData = solutionData
+    const [solution, solutionData] = this.#copyOnSolution(flowGuid, copyData)
+    this.#solution = solution
+    this.#solutionData = solutionData
 
-      await this.#copyFile(flowGuid, copyData)
-    } catch (error) {
-      if (typeof error === 'string') {
-        throw new Error(error)
-      }
-      /* istanbul ignore next */
-      throw error
-    }
+    await this.#copyFile(flowGuid, copyData)
   }
 
   /**
@@ -91,25 +75,17 @@ export class SoFloC {
    */
   async deleteFlow (flowGuid: string) {
     await this.load()
-    try {
-      this.#worflowExists(flowGuid)
+    this.#worflowExists(flowGuid)
 
-      const [customisations, customisationsData] = this.#deleteOnCustomisations(flowGuid)
-      this.#customisations = customisations
-      this.#customisationsData = customisationsData
+    const [customisations, customisationsData] = this.#deleteOnCustomisations(flowGuid)
+    this.#customisations = customisations
+    this.#customisationsData = customisationsData
 
-      const [solution, solutionData] = this.#deleteOnSolution(flowGuid)
-      this.#solution = solution
-      this.#solutionData = solutionData
+    const [solution, solutionData] = this.#deleteOnSolution(flowGuid)
+    this.#solution = solution
+    this.#solutionData = solutionData
 
-      await this.#deleteFile(flowGuid)
-    } catch (error) {
-      if (typeof error === 'string') {
-        throw new Error(error)
-      }
-      /* istanbul ignore next */
-      throw error
-    }
+    await this.#deleteFile(flowGuid)
   }
 
   /**
@@ -118,21 +94,13 @@ export class SoFloC {
    */
   async updateVersion (newVersion: string) {
     await this.load()
-    try {
-      this.validateVersion(newVersion)
+    this.validateVersion(newVersion)
 
-      this.name = this.name
-        .replace(this.#snake(this.version), this.#snake(newVersion))
-      this.#solution = this.#solution
-        .replace(`<Version>${this.version}</Version>`, `<Version>${newVersion}</Version>`)
-      this.version = newVersion
-    } catch (error) {
-      if (typeof error === 'string') {
-        throw new Error(error)
-      }
-      /* istanbul ignore next */
-      throw error
-    }
+    this.name = this.name
+      .replace(this.#snake(this.version), this.#snake(newVersion))
+    this.#solution = this.#solution
+      .replace(`<Version>${this.version}</Version>`, `<Version>${newVersion}</Version>`)
+    this.version = newVersion
   }
 
   /**
@@ -162,7 +130,7 @@ export class SoFloC {
       return await JSZip.loadAsync(file, options)
     } catch (error) {
       console.log(error)
-      throw 'Failed to unzip the file'
+      throw new Error('Failed to unzip the file')
     }
   }
 
@@ -199,7 +167,7 @@ export class SoFloC {
       ]
     } catch (error) {
       console.log(error)
-      throw `'${xmlName}.xml' was not found in the Solution zip`
+      throw new Error(`'${xmlName}.xml' was not found in the Solution zip`)
     }
   }
 
@@ -212,7 +180,7 @@ export class SoFloC {
       return solution.ImportExportXml.SolutionManifest.Version._text
     } catch (error) {
       console.log(error)
-      throw 'Failed to retrieve the version'
+      throw new Error('Failed to retrieve the version')
     }
   }
 
@@ -419,7 +387,7 @@ export class SoFloC {
   validateVersion (newVersion: string) {
     const validRegEx = /^((\d+\.)+\d+)$/
     if (!validRegEx.exec(newVersion)) {
-      throw `Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<?build>.<?revision>.`
+      throw new Error(`Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<?build>.<?revision>.`)
     }
 
     const originalVersionValues = this.originalVersion.split('.').map(value => Number(value))
@@ -441,7 +409,7 @@ export class SoFloC {
     }
 
     if (Number(newValueString) < Number(currentValueString) ||
-    (Number(newValueString) === Number(currentValueString) && newVersion !== this.originalVersion)) throw `Version '${newVersion}' is smaller than '${this.originalVersion}'`
+    (Number(newValueString) === Number(currentValueString) && newVersion !== this.originalVersion)) throw new Error(`Version '${newVersion}' is smaller than '${this.originalVersion}'`)
   }
   /* #endregion */
 
@@ -450,7 +418,7 @@ export class SoFloC {
    * Verifies if a specified workflow exists in the ***Solution***
    */
   #worflowExists (flowGuid: string) {
-    if (this.#workflows.findIndex(wf => wf.id === flowGuid) < 0) throw `Workflow file with GUID '${flowGuid}' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'`
+    if (this.#workflows.findIndex(wf => wf.id === flowGuid) < 0) throw new Error(`Workflow file with GUID '${flowGuid}' does not exist in this Solution or the Solution was changed without updating 'solution.xml' or 'customizations.xml'`)
   }
 
   /**
