@@ -222,7 +222,8 @@ describe('SoFloC', () => {
       } catch (error) {
         err = error
       }
-      expect(err.message).toBe('Version \'1.7.\' is not valid. It should follow the format <major>.<minor>.<build>.<revision>.')
+      expect(err.message).toBe('Version \'1.7.\' is not valid. It should follow the format <major>.<minor>.<?build>.<?revision>.')
+      expect(sofloc.version).toBe('2.0.0.0')
     })
     test('smaller version', async () => {
       const sofloc = new SoFloC(file, name)
@@ -234,6 +235,7 @@ describe('SoFloC', () => {
         err = error
       }
       expect(err.message).toBe('Version \'1.99.99.99\' is smaller than \'2.0.0.0\'')
+      expect(sofloc.version).toBe('2.0.0.0')
     })
     test('smaller version with less chars', async () => {
       const sofloc = new SoFloC(file, name)
@@ -245,6 +247,7 @@ describe('SoFloC', () => {
         err = error
       }
       expect(err.message).toBe('Version \'1.9\' is smaller than \'2.0.0.0\'')
+      expect(sofloc.version).toBe('2.0.0.0')
     })
     test('bigger version with less chars', async () => {
       const sofloc = new SoFloC(file, name)
@@ -256,6 +259,7 @@ describe('SoFloC', () => {
         err = error
       }
       expect(err).toBeUndefined()
+      expect(sofloc.version).toBe('2.1')
     })
     test('same version with less chars', async () => {
       const sofloc = new SoFloC(file, name)
@@ -266,6 +270,7 @@ describe('SoFloC', () => {
       } catch (error) {
         err = error
       }
+      expect(sofloc.version).toBe('2.0.0.0')
       expect(err.message).toBe('Version \'2.0\' is smaller than \'2.0.0.0\'')
     })
     test('same version', async () => {
@@ -278,6 +283,20 @@ describe('SoFloC', () => {
         err = error
       }
       expect(err).toBeUndefined()
+      expect(sofloc.version).toBe('2.0.0.0')
+    })
+    test('bigger version then smaller, but bigger than original', async () => {
+      const sofloc = new SoFloC(file, name)
+
+      let err: any
+      try {
+        await sofloc.updateVersion('2.3')
+        await sofloc.updateVersion('2.1.0.0')
+      } catch (error) {
+        err = error
+      }
+      expect(err).toBeUndefined()
+      expect(sofloc.version).toBe('2.1.0.0')
     })
   })
   describe('get workflows', () => {

@@ -36,6 +36,8 @@ export class SoFloC {
         this.#solutionData = solutionData
 
         this.version = this.#getCurrentVersion(this.#solutionData)
+        this.originalVersion = this.version
+
         this.#workflows = this.#getWorkflows(this.#customisationsData, this.#solutionData, this.#zip)
         this.data = await this.#getData(this.#zip)
 
@@ -417,16 +419,16 @@ export class SoFloC {
   validateVersion (newVersion: string) {
     const validRegEx = /^((\d+\.)+\d+)$/
     if (!validRegEx.exec(newVersion)) {
-      throw `Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<build>.<revision>.`
+      throw `Version '${newVersion}' is not valid. It should follow the format <major>.<minor>.<?build>.<?revision>.`
     }
 
-    const currentVersionValues = this.version.split('.').map(value => Number(value))
+    const originalVersionValues = this.originalVersion.split('.').map(value => Number(value))
     const newVersionValues = newVersion.split('.').map(value => Number(value))
 
     let currentValueString = ''
     let newValueString = ''
-    for (let i = 0; i < currentVersionValues.length; i++) {
-      const currentValue = currentVersionValues[i] || 0
+    for (let i = 0; i < originalVersionValues.length; i++) {
+      const currentValue = originalVersionValues[i] || 0
       const newValue = newVersionValues[i] || 0
 
       const currentValueLength = String(currentValue).length
@@ -439,7 +441,7 @@ export class SoFloC {
     }
 
     if (Number(newValueString) < Number(currentValueString) ||
-    (Number(newValueString) === Number(currentValueString) && newVersion !== this.version)) throw `Version '${newVersion}' is smaller than '${this.version}'`
+    (Number(newValueString) === Number(currentValueString) && newVersion !== this.originalVersion)) throw `Version '${newVersion}' is smaller than '${this.originalVersion}'`
   }
   /* #endregion */
 
@@ -465,17 +467,21 @@ export class SoFloC {
   #file: FileInput
   #zip: JSZip
   /**
-   * The ***Solution*** file name. It is update as a new version is set
+   * The ***Solution*** file name. It is update as a new version is set.
    */
   name: string
   /**
-   * The ***Solution*** version. It is update as a new version is set
+   * The ***Solution*** version. It is update as a new version is set.
    */
   version: string
   /**
    * The ***Solution*** data as Base64. It is updated as new copies are added.
    */
   data: Base64
+  /**
+   * The ***Solution*** version as it was when the file was loaded. It does not change when a new version is set.
+   */
+  originalVersion: string
   #workflows: PrivateWorkflowT[]
   #customisations: Xml
   #customisationsData: CustomisationsXml
