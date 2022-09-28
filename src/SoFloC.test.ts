@@ -4,7 +4,6 @@ import { readFileSync } from 'fs'
 import JSZip, { loadAsync } from 'jszip'
 import { join } from 'path'
 import { SoFloC } from './SoFloC'
-import expectedDataCopy from './_jest/expectedDataCopy.json'
 import expectedZipCopy from './_jest/expectedZipCopy'
 import expectedZipDelete from './_jest/expectedZipDelete'
 const crypto = require('crypto')
@@ -307,17 +306,23 @@ describe('SoFloC', () => {
       expect(wfs).toEqual([])
     })
   })
-  describe('#load', () => {
-    test('load valid zip', async () => {
+  describe('data', () => {
+    test('version is updated', async () => {
       const sofloc = new SoFloC(file, name)
       await sofloc.updateVersion('2.1.0.0')
 
-      expect(sofloc).toEqual(expectedDataCopy)
+      const zip = await JSZip.loadAsync(sofloc.data, { base64: true })
+      const solution = await zip.files['solution.xml'].async('string')
+      const version = solution.match(/<Version>(.*)<\/Version>/) as any[]
+
+      expect(version[1]).toBe('2.1.0.0')
       expect(sofloc.workflows).toEqual([
         { id: '0f48cba9-ef0c-ed11-82e4-000d3a64f6f2', name: 'First Test Flow' },
         { id: 'f4910f26-8210-ec11-b6e6-002248842287', name: 'Second Test Flow' },
       ])
     })
+  })
+  describe('#load', () => {
     test('version not found on Solution)', async () => {
       const zip = await loadAsync(file, { base64: true })
       let solution = await zip.files['solution.xml'].async('string')

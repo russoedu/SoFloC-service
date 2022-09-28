@@ -101,6 +101,10 @@ export class SoFloC {
     this.#solution = this.#solution
       .replace(`<Version>${this.version}</Version>`, `<Version>${newVersion}</Version>`)
     this.version = newVersion
+
+    this.#zip.file('solution.xml', this.#solution)
+
+    this.data = await this.#getData(this.#zip)
   }
 
   /**
@@ -322,7 +326,7 @@ export class SoFloC {
   }
   /* #endregion */
 
-  /* #region DEPLETE FLOW METHODS */
+  /* #region DELETE FLOW METHODS */
   /**
    * Deletes the flow inside the customizations.xml
    * @param flowGuid The GUID of the flow to be deleted
