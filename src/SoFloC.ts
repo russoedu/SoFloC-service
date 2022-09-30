@@ -261,6 +261,7 @@ export class SoFloC {
    * @returns The customisations.xml data
    */
   #copyOnCustomisations (flowGuid: string, copyData: FlowCopyT): [Xml, CustomisationsXml] {
+    const flow = this.workflows.find(wf => wf.id === flowGuid) as WorkflowT
     const workflowComponent = `<Workflow WorkflowId="{${flowGuid}}" Name=".+?">(.|\r|\n)+?<\/Workflow>`
     const workflowRegEx = new RegExp(`\r?\n?.+?${workflowComponent}`, 'gm')
 
@@ -268,12 +269,15 @@ export class SoFloC {
 
     const jsonFileNameRegEx = /<JsonFileName>(.|\r|\n)+?<\/JsonFileName>/gi
     const introducedVersionRegEx = /<IntroducedVersion>(.|\r|\n)+?<\/IntroducedVersion>/gi
+    const localisedNameComponent = `<LocalizedName languagecode="(\\d+?)" description="${flow.name}" />`
+    const localisedNameRegEx = new RegExp(localisedNameComponent)
 
     const copy = workflow
       .replace(flowGuid, copyData.guid)
       .replace(/Name=".+?"/, `Name="${copyData.name}"`)
       .replace(jsonFileNameRegEx, `<JsonFileName>/${copyData.fileName}</JsonFileName>`)
       .replace(introducedVersionRegEx, `<IntroducedVersion>${this.version}</IntroducedVersion>`)
+      .replace(localisedNameRegEx, `<LocalizedName languagecode="$1" description=\"${copyData.name}\" \/>`)
 
     const customisations = this.#customisations.replace(workflow, `${workflow}${copy}`)
     const data = xml2js(customisations, { compact: true }) as CustomisationsXml

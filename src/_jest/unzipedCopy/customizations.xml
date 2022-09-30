@@ -49,7 +49,7 @@
       <IsCustomProcessingStepAllowedForOtherPublishers>1</IsCustomProcessingStepAllowedForOtherPublishers>
       <PrimaryEntity>none</PrimaryEntity>
       <LocalizedNames>
-        <LocalizedName languagecode="1033" description="First Test Flow" />
+        <LocalizedName languagecode="1033" description="Third Copy Flow" />
       </LocalizedNames>
     </Workflow>
     <Workflow WorkflowId="{12345678-yyyy-zzzz-xxxx-876543210987}" Name="Second Copy Flow">
@@ -74,7 +74,7 @@
       <IsCustomProcessingStepAllowedForOtherPublishers>1</IsCustomProcessingStepAllowedForOtherPublishers>
       <PrimaryEntity>none</PrimaryEntity>
       <LocalizedNames>
-        <LocalizedName languagecode="1033" description="First Test Flow" />
+        <LocalizedName languagecode="1033" description="Second Copy Flow" />
       </LocalizedNames>
     </Workflow>
     <Workflow WorkflowId="{f4910f26-8210-ec11-b6e6-002248842287}" Name="Second Test Flow">
@@ -122,7 +122,7 @@
       <IsCustomProcessingStepAllowedForOtherPublishers>1</IsCustomProcessingStepAllowedForOtherPublishers>
       <PrimaryEntity>none</PrimaryEntity>
       <LocalizedNames>
-        <LocalizedName languagecode="1033" description="Second Test Flow" />
+        <LocalizedName languagecode="1033" description="First Copy Flow" />
       </LocalizedNames>
     </Workflow>
   </Workflows>

@@ -90,9 +90,9 @@ export default {
     date:            expect.any(Date),
     _data:           {
       compressedContent: expect.any(Uint8Array),
-      compressedSize:    909,
+      compressedSize:    921,
       uncompressedSize:  5827,
-      crc32:             2098487185,
+      crc32:             -1652612910,
       compression:       {
         magic: expect.any(String),
       },
