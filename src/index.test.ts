@@ -3,7 +3,7 @@
 import { readFileSync } from 'fs'
 import JSZip, { loadAsync } from 'jszip'
 import { join } from 'path'
-import { SoFloC } from './SoFloC'
+import { SoFloC } from '.'
 import expectedZipCopy from './_jest/expectedZipCopy'
 import expectedZipDelete from './_jest/expectedZipDelete'
 const crypto = require('crypto')
