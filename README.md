@@ -26,7 +26,7 @@ You can use this NPM package directly or, even better, use the [**SoFloC** deskt
 ```
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { SoFloC } from 'SoFloC'
+import { SoFloC } from 'sofloc'
 
 async function main () {
   const name = 'TestSolution_2_0_0_0.zip'
