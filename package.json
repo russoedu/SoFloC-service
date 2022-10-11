@@ -1,9 +1,10 @@
 {
   "name": "sofloc",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Service to copy a Power Automate Flows from a Solution",
   "scripts": {
     "build": "tsc",
+    "build-publish": "tsc -p tsconfig-publish.json",
     "prepare": "tsc -p tsconfig-publish.json",
     "prepublishOnly": "npm test",
     "test": "jest",
