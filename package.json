@@ -11,7 +11,10 @@
     "check": "npx npm-check --location=local",
     "update": "npx npm-check -u"
   },
-  "author": "Eduardo Russo",
+  "author": {
+    "name": "Eduardo Russo",
+    "url": "https://github.com/russoedu"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
