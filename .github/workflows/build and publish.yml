@@ -42,10 +42,6 @@ jobs:
       if: steps.cpv.outputs.is-new-version == 'true'
       run: npm install
 
-    - name: Build app
-      if: steps.cpv.outputs.is-new-version == 'true'
-      run: npm run build
-
     - name: Publish
       if: steps.cpv.outputs.is-new-version == 'true'
       run: npm publish
