@@ -5,7 +5,7 @@ import { JSZipObject } from 'jszip'
 
 export type Xml = string
 
-interface InputByType {
+export interface InputByType {
   base64: string;
   string: string;
   text: string;

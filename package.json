@@ -1,12 +1,12 @@
 {
   "name": "sofloc",
-  "version": "1.6.2",
+  "version": "1.6.4",
   "description": "Service to copy a Power Automate Flows from a Solution",
   "scripts": {
     "build": "tsc",
     "build-publish": "tsc -p tsconfig-publish.json",
     "prepare": "tsc -p tsconfig-publish.json",
-    "prepublishOnly": "npm test",
+    "prepublishOnly": "tsc -p tsconfig-publish.json && npm test",
     "test": "jest",
     "check": "npx npm-check --location=local",
     "update": "npx npm-check -u"
@@ -30,6 +30,7 @@
     "flow copy",
     "power automate copy"
   ],
+  "main": "lib/index.js",
   "directories": {
     "lib": "lib"
   },
