@@ -21,35 +21,33 @@ jobs:
 
     - name: Check package version
       id: cpv
-      uses: EndBug/version-check@v1
-      with:
-        diff-search: true
+      uses: PostHog/check-package-version@v2
 
     - name: Log when changed
-      if: steps.cpv.outputs.changed == 'true'
-      run: 'echo "Version changed to ${{ steps.cpv.outputs.version }}"'
+      if: steps.cpv.outputs.is-new-version == 'true'
+      run: 'echo "Version changed: new version is ${{ steps.cpv.outputs.committed-version }}, NPM version is ${{ steps.cpv.outputs.published-version }}"'
 
     - name: Log when unchanged
-      if: steps.cpv.outputs.changed == 'false'
+      if: steps.cpv.outputs.is-new-version == 'false'
       run: 'echo "No version change :/"'
 
     - name: Install Node.js
-      if: steps.cpv.outputs.changed == 'true'
+      if: steps.cpv.outputs.is-new-version == 'true'
       uses: actions/setup-node@v3
       with:
         node-version: 16.x
         registry-url: 'https://registry.npmjs.org'
 
     - name: Install NPM packages
-      if: steps.cpv.outputs.changed == 'true'
+      if: steps.cpv.outputs.is-new-version == 'true'
       run: npm install
 
     - name: Build app
-      if: steps.cpv.outputs.changed == 'true'
+      if: steps.cpv.outputs.is-new-version == 'true'
       run: npm run build
 
     - name: Publish
-      if: steps.cpv.outputs.changed == 'true'
+      if: steps.cpv.outputs.is-new-version == 'true'
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
