@@ -373,8 +373,8 @@ describe('SoFloC', () => {
   })
 })
 
-async function zipBack (zip: JSZip) {
-  return await zip.generateAsync({
+function zipBack (zip: JSZip) {
+  return zip.generateAsync({
     type:               'base64',
     compression:        'DEFLATE',
     compressionOptions: {

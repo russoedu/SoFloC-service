@@ -13,6 +13,9 @@ build:
             coverage:
               file: ./coverage/cobertura-coverage.xml
               format: cobertura
+filter:
+    excluded_paths:
+        - "src/_jest/"
 
 checks:
     javascript:

@@ -23,7 +23,7 @@
       "jsconfig.json": true,
       ".eslintrc.js": true,
       ".npmignore": true,
-      ".scrutinizer.yml": true,
+      // ".scrutinizer.yml": true,
       "jest.config.js": true,
       "LICENSE": true,
       "coverage": true,
