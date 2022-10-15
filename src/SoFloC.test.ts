@@ -6,6 +6,7 @@ import { join } from 'path'
 import { SoFloC } from '.'
 import expectedZipCopy from './_jest/expectedZipCopy'
 import expectedZipDelete from './_jest/expectedZipDelete'
+import { cleanLineBreak, zipBack } from './_jest/helpers'
 const crypto = require('crypto')
 
 jest.setTimeout(10 * 60 * 1000)
@@ -372,17 +373,3 @@ describe('SoFloC', () => {
     })
   })
 })
-
-function zipBack (zip: JSZip) {
-  return zip.generateAsync({
-    type:               'base64',
-    compression:        'DEFLATE',
-    compressionOptions: {
-      level: 9,
-    },
-  })
-}
-
-function cleanLineBreak (content: string) {
-  return content.replace(/\r\n/gm, '\n')
-}
